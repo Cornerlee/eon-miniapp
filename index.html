@@ -110,6 +110,20 @@ textarea.f.big{min-height:220px}
 .ord .row{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
 .ord .row button{background:var(--bg2);border-radius:9px;padding:6px 10px;font-size:13px;font-weight:600}
 .ord.new .t::before{content:"● ";color:var(--danger)}
+/* группы */
+.glist{display:flex;flex-direction:column;margin-top:10px}
+.grow{display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--line)}
+.gname{flex:1;min-width:0;display:flex;flex-direction:column;text-align:left;padding:8px 0}
+.gico{flex:none;min-width:36px;height:36px;border-radius:10px;background:var(--bg2);font-size:15px}
+span.gico{background:none}
+.gico.del{color:var(--danger)}.gico.wide{padding:0 10px;font-size:13px;font-weight:600}
+.gsel{display:flex;flex-direction:column}
+.gitem{display:grid;grid-template-columns:24px 52px minmax(0,1fr);gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.gitem input{width:22px;height:22px;accent-color:var(--btn);margin:0}
+.gitem img{width:52px;height:52px;border-radius:9px;object-fit:cover;background:var(--bg2)}
+.gitem .t{display:block;font-size:14px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gitem .note{display:block;font-size:12px}
+.chip#gman{background:none;border:1px dashed var(--line);color:var(--muted)}
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;z-index:20;max-width:90vw;text-align:center}
 .spin{padding:60px 0;text-align:center;color:var(--muted)}
 [hidden]{display:none!important}
@@ -129,15 +143,15 @@ textarea.f.big{min-height:220px}
 const tg = window.Telegram && window.Telegram.WebApp;
 const API = window.EON_API || "";
 const app = document.getElementById("app");
-let ITEMS = [], ORDERS = [], ADMIN = false, USER = null;
-let sec = "Все", type = "Все", query = "", tab = "items", current = null, view = "feed";
+let ITEMS = [], GROUPS = [], ORDERS = [], ADMIN = false, USER = null;
+let grp = "all", query = "", tab = "items", current = null, view = "feed";
 
 const rub = n => Number(n || 0).toLocaleString("ru-RU") + " ₽";
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const haptic = t => { try { tg && tg.HapticFeedback && tg.HapticFeedback.notificationOccurred(t || "success"); } catch(_) {} };
 const $ = id => document.getElementById(id);
 function toast(t){ const el = $("toast"); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => el.hidden = true, 2200); }
-const STATUS = {active:"В продаже", hidden:"Скрыто", sold:"Продано"};
+const STATUS = {active:"В продаже", sold:"Продано", hidden:"В архиве"};
 const SECTIONS = ["Женское", "Мужское", "Унисекс"];
 
 async function call(action, data){
@@ -164,33 +178,94 @@ function header(show){ $("top").hidden = !show; }
 
 // ---------- лента ----------
 function chips(){
-  const visible = ITEMS.filter(it => ADMIN || it.status !== "hidden");
-  const secs = ["Все", ...SECTIONS.filter(s => visible.some(it => it.section === s)), ...[...new Set(visible.map(it => it.section).filter(s => s && !SECTIONS.includes(s)))]];
-  const inSec = visible.filter(it => sec === "Все" || it.section === sec);
-  const types = ["Все", ...[...new Set(inSec.map(it => it.type).filter(Boolean))].sort()];
-  if (!types.includes(type)) type = "Все";
-  $("secs").innerHTML = secs.map(s => `<button class="chip" data-s="${esc(s)}" aria-pressed="${s===sec}">${esc(s)}</button>`).join("");
-  $("types").innerHTML = types.length > 2 ? types.map(s => `<button class="chip" data-t="${esc(s)}" aria-pressed="${s===type}">${esc(s)}</button>`).join("") : "";
-  $("secs").querySelectorAll(".chip").forEach(b => b.onclick = () => { sec = b.dataset.s; type = "Все"; feed(); });
-  $("types").querySelectorAll(".chip").forEach(b => b.onclick = () => { type = b.dataset.t; feed(); });
+  const vis = ITEMS.filter(it => it.status !== "hidden");
+  const groups = GROUPS.filter(g => ADMIN || vis.some(it => g.items.includes(it.id)));
+  if (grp !== "all" && grp !== "arch" && !GROUPS.some(g => String(g.id) === grp)) grp = "all";
+  $("secs").innerHTML = [`<button class="chip" data-g="all" aria-pressed="${grp==="all"}">Все</button>`,
+    ...groups.map(g => `<button class="chip" data-g="${g.id}" aria-pressed="${String(g.id)===grp}">${esc(g.name)}</button>`),
+    ...(ADMIN ? [`<button class="chip" data-g="arch" aria-pressed="${grp==="arch"}">Архив${ITEMS.some(i => i.status==="hidden") ? " · " + ITEMS.filter(i => i.status==="hidden").length : ""}</button>`,
+                 `<button class="chip" id="gman" aria-label="Настроить группы">✎ Группы</button>`] : [])].join("");
+  $("types").innerHTML = "";
+  $("secs").querySelectorAll("[data-g]").forEach(b => b.onclick = () => { grp = b.dataset.g; feed(); });
+  if ($("gman")) $("gman").onclick = groupsScreen;
+}
+function inGroup(it){
+  if (grp === "arch") return it.status === "hidden";
+  if (it.status === "hidden") return false;
+  if (grp === "all") return true;
+  const g = GROUPS.find(g => String(g.id) === grp);
+  return !!g && g.items.includes(it.id);
 }
 function feed(){
   view = "feed"; current = null; header(true); back(false); setMain(null);
   $("chipsbox").hidden = tab !== "items"; $("q").hidden = tab !== "items";
   if (tab === "orders") return orders();
   chips();
-  const list = ITEMS.filter(it => (ADMIN || it.status !== "hidden") && (sec === "Все" || it.section === sec) && (type === "Все" || it.type === type) && (!query || (it.title + " " + it.id).toLowerCase().includes(query)));
-  const imp = ADMIN && !ITEMS.length ? `<div class="box"><div class="bt">Каталог пуст</div><p class="note">Загрузить 29 вещей из первого заказа вместе с фото, ценами и ссылками на поставщиков?</p><button class="btn pri" id="imp">Загрузить каталог</button></div>` : "";
-  app.innerHTML = `${imp}<div class="count">${list.length} ${plural(list.length, "товар", "товара", "товаров")}${ADMIN ? ` · в продаже ${ITEMS.filter(i => i.status==="active").length} · продано ${ITEMS.filter(i => i.status==="sold").length}` : ""}</div>
+  const list = ITEMS.filter(it => inGroup(it) && (!query || (it.title + " " + it.id).toLowerCase().includes(query)));
+  const imp = ADMIN && !ITEMS.length ? `<div class="box"><div class="bt">Каталог пуст</div><p class="note">Загрузить 29 вещей из первого заказа вместе с фото, ценами, ссылками на поставщиков и группами?</p><button class="btn pri" id="imp">Загрузить каталог</button></div>` : "";
+  app.innerHTML = `${imp}<div class="count">${list.length} ${plural(list.length, "товар", "товара", "товаров")}${ADMIN && grp !== "arch" ? ` · в продаже ${ITEMS.filter(i => i.status==="active").length} · продано ${ITEMS.filter(i => i.status==="sold").length}` : ""}</div>
     <div class="grid">${list.map(it => `
       <button class="ad" data-id="${esc(it.id)}">
         <div class="ph">${it.photos[0] ? `<img src="${esc(it.photos[0])}" alt="" loading="lazy">` : ""}${it.status !== "active" ? `<span class="st ${it.status}">${STATUS[it.status]}</span>` : ""}</div>
         <div class="p">${rub(it.price)}</div>
         <div class="t">${esc(it.title)}</div>
         <div class="m">${esc(it.sizes)}</div>
-      </button>`).join("") || (ITEMS.length ? '<p class="note">Ничего не нашлось.</p>' : "")}</div>`;
+      </button>`).join("") || (ITEMS.length ? `<p class="note">${grp === "arch" ? "В архиве пусто." : "Ничего не нашлось."}</p>` : "")}</div>`;
   app.querySelectorAll(".ad").forEach(b => b.onclick = () => open(b.dataset.id));
   if ($("imp")) $("imp").onclick = importSeed;
+  window.scrollTo(0, 0);
+}
+
+// ---------- админ: группы (как папки в Telegram) ----------
+function groupsScreen(){
+  view = "groups"; header(false); back(true); setMain("Новая группа", () => groupEdit(null));
+  app.innerHTML = `<h1>Группы</h1>
+    <p class="note">Группы — вкладки вверху каталога. Одна вещь может быть в нескольких группах. Клиенты видят только группы, где есть товары.</p>
+    <div class="glist">${GROUPS.map((g, i) => `
+      <div class="grow">
+        <button class="gname" data-e="${g.id}"><b>${esc(g.name)}</b><span class="note">${g.items.filter(id => ITEMS.some(it => it.id === id && it.status !== "hidden")).length} ${plural(g.items.length, "товар", "товара", "товаров")}</span></button>
+        ${i ? `<button class="gico" data-up="${i}" aria-label="Выше">↑</button>` : `<span class="gico"></span>`}
+        <button class="gico del" data-d="${g.id}" aria-label="Удалить группу">✕</button>
+      </div>`).join("") || '<p class="note">Групп пока нет.</p>'}</div>
+    <button class="btn pri" id="gnew" style="width:100%;margin-top:14px">+ Новая группа</button>`;
+  $("gnew").onclick = () => groupEdit(null);
+  app.querySelectorAll("[data-e]").forEach(b => b.onclick = () => groupEdit(GROUPS.find(g => String(g.id) === b.dataset.e)));
+  app.querySelectorAll("[data-up]").forEach(b => b.onclick = async () => {
+    const i = +b.dataset.up; [GROUPS[i-1], GROUPS[i]] = [GROUPS[i], GROUPS[i-1]];
+    try { await Promise.all(GROUPS.map((g, k) => g.sort === k ? null : (g.sort = k, call("group_save", {group: g})))); } catch(e) { toast(e.message); }
+    groupsScreen();
+  });
+  app.querySelectorAll("[data-d]").forEach(b => { let armed = false; b.onclick = async () => {
+    if (!armed) { armed = true; b.textContent = "Удалить?"; b.classList.add("wide"); setTimeout(() => { armed = false; b.textContent = "✕"; b.classList.remove("wide"); }, 3000); return; }
+    try { await call("group_delete", {id: +b.dataset.d}); GROUPS = GROUPS.filter(g => String(g.id) !== b.dataset.d); haptic(); toast("Группа удалена, товары остались"); groupsScreen(); } catch(e) { toast(e.message); }
+  }; });
+  window.scrollTo(0, 0);
+}
+function groupEdit(g){
+  const isNew = !g;
+  g = g ? {...g, items: [...g.items]} : {name: "", items: [], sort: GROUPS.length};
+  view = "group"; header(false); back(true);
+  const list = [...ITEMS].sort((a, b) => (a.status === "hidden") - (b.status === "hidden"));
+  app.innerHTML = `<h1>${isNew ? "Новая группа" : "Группа"}</h1>
+    <label class="lbl" for="g_n">Название</label><input class="f" id="g_n" maxlength="30" placeholder="Например: Пуховики" value="${esc(g.name)}">
+    <div class="h" style="display:flex;justify-content:space-between;align-items:baseline">Товары в группе <span class="note" id="g_c"></span></div>
+    <div class="gsel">${list.map(it => `
+      <label class="gitem"><input type="checkbox" value="${esc(it.id)}" ${g.items.includes(it.id) ? "checked" : ""}>
+        <img src="${esc(it.photos[0] || "")}" alt=""><span><span class="t">${esc(it.title)}</span><span class="note">${esc(it.id)} · ${rub(it.price)}${it.status === "hidden" ? " · в архиве" : ""}</span></span></label>`).join("")}</div>`;
+  const cnt = () => $("g_c").textContent = "выбрано " + app.querySelectorAll(".gitem input:checked").length;
+  app.querySelectorAll(".gitem input").forEach(c => c.onchange = cnt); cnt();
+  const doSave = async () => {
+    g.name = $("g_n").value.trim();
+    if (!g.name) { toast("Введите название группы"); return; }
+    g.items = [...app.querySelectorAll(".gitem input:checked")].map(c => c.value);
+    try {
+      const {group} = await call("group_save", {group: g});
+      const i = GROUPS.findIndex(x => x.id === group.id); if (i >= 0) GROUPS[i] = group; else GROUPS.push(group);
+      haptic(); toast("Группа сохранена"); groupsScreen();
+    } catch(e) { toast(e.message); }
+  };
+  setMain("Сохранить группу", doSave);
+  if (!tg || !tg.initData) app.insertAdjacentHTML("beforeend", `<button class="btn pri" id="g_s" style="width:100%;margin-top:14px">Сохранить группу</button>`), $("g_s").onclick = doSave;
   window.scrollTo(0, 0);
 }
 const plural = (n, a, b, c) => { const m = n % 10, h = n % 100; return m === 1 && h !== 11 ? a : m >= 2 && m <= 4 && (h < 12 || h > 14) ? b : c; };
@@ -207,7 +282,8 @@ function open(id){
     <h1>${esc(it.title)}</h1>
     <div class="price">${rub(it.price)}</div>
     <div class="meta">${[it.section, it.type].filter(Boolean).map(esc).join(" · ")} · Москва · под заказ 2–3 недели</div>
-    ${ADMIN ? `<div class="actions"><button class="btn pri" id="ed">Редактировать</button><button class="btn" id="cp">Текст для Авито</button></div>`
+    ${ADMIN ? `<div class="actions"><button class="btn pri" id="ed">Редактировать</button><button class="btn" id="cp">Текст для Авито</button></div>
+      <button class="btn" id="arch" style="width:100%">${it.status === "hidden" ? "Вернуть из архива" : "В архив"}</button>`
             : `<div class="actions"><button class="btn pri" id="ord">Заказать</button><button class="btn" id="ask">Задать вопрос</button></div>`}
     <div class="h">Характеристики</div>
     <dl class="facts"><dt>Состояние</dt><dd>Новое</dd>${it.sizes ? `<dt>Размер</dt><dd>${esc(it.sizes)}</dd>` : ""}${(it.facts || []).map(([k,v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>
@@ -219,6 +295,7 @@ function open(id){
       ${p.qty ? `<div><span class="lbl">В заказе</span>${esc(p.qty)}</div>` : ""}
       ${cost ? `<div class="money"><div><b>¥${esc(p.cny)}</b><span>закупка</span></div><div><b>${rub(cost)}</b><span>под ключ</span></div><div><b class="${mult>=1.7?"good":"bad"}">${profit>0?"+":""}${rub(profit)}</b><span>с вещи · ×${mult}</span></div></div>` : ""}
       ${p.warn ? `<p class="warn">⚠ ${esc(p.warn)}</p>` : ""}
+      <div><span class="lbl">Группы</span><div class="seg" id="igr">${GROUPS.map(g => `<button data-g="${g.id}" aria-pressed="${g.items.includes(it.id)}">${esc(g.name)}</button>`).join("") || '<span class="note">Групп нет — создайте во вкладке «✎ Группы».</span>'}</div></div>
       <p class="note">Этот блок клиенты не видят.</p></div>` : ""}`;
   window.scrollTo(0, 0);
   const gal = $("gal"), dots = $("dots");
@@ -226,6 +303,12 @@ function open(id){
   if (ADMIN) {
     $("ed").onclick = () => edit(it);
     $("cp").onclick = () => copy(adText(it));
+    $("arch").onclick = async () => { try { await save({...it, status: it.status === "hidden" ? "active" : "hidden"}); haptic(); toast(it.status === "hidden" ? "Вернул в продажу" : "Убрал в архив"); feed(); } catch(e) { toast(e.message); } };
+    app.querySelectorAll("#igr button").forEach(b => b.onclick = async () => {
+      const g = GROUPS.find(x => String(x.id) === b.dataset.g), on = !g.items.includes(it.id);
+      const ng = {...g, items: on ? [...g.items, it.id] : g.items.filter(x => x !== it.id)};
+      try { const {group} = await call("group_save", {group: ng}); Object.assign(g, group); b.setAttribute("aria-pressed", on); haptic(); } catch(e) { toast(e.message); }
+    });
     app.querySelectorAll(".seg button").forEach(b => b.onclick = async () => { try { await save({...it, status: b.dataset.s}); haptic(); open(it.id); } catch(e) { toast(e.message); } });
     app.querySelectorAll(".src").forEach(b => b.onclick = () => { tg && tg.openLink ? tg.openLink(b.dataset.u) : window.open(b.dataset.u, "_blank"); });
     setMain(null);
@@ -273,7 +356,7 @@ async function ask(it){
 // ---------- админ: редактор ----------
 function edit(it){
   const isNew = !it;
-  it = it ? JSON.parse(JSON.stringify(it)) : {title:"", price:0, section: sec !== "Все" ? sec : "", type: type !== "Все" ? type : "", sizes:"", facts:[], description:"", photos:[], status:"active", private:{}};
+  it = it ? JSON.parse(JSON.stringify(it)) : {title:"", price:0, section: "", type: "", sizes:"", facts:[], description:"", photos:[], status:"active", private:{}};
   const p = it.private = it.private || {};
   view = "edit"; header(false); back(true);
   const allSecs = [...new Set([...SECTIONS, ...ITEMS.map(i => i.section).filter(Boolean)])];
@@ -336,7 +419,12 @@ function edit(it){
     Object.assign(it.private, {links: $("e_l").value.split("\n").map(l => l.split("|").map(s => s.trim())).filter(([n, u]) => n && u).map(([n, u]) => [n, u]),
       qty: $("e_q").value.trim(), cny, kg, cost: cny ? Math.round((cny * 12 + kg * 480) / 10) * 10 : 0, warn: $("e_w").value.trim()});
     if (tg) tg.MainButton.showProgress();
-    try { const saved = await save(it); haptic(); toast("Сохранено"); open(saved.id); }
+    try {
+      const saved = await save(it);
+      const g = isNew && GROUPS.find(x => String(x.id) === grp);
+      if (g && !g.items.includes(saved.id)) { const {group} = await call("group_save", {group: {...g, items: [...g.items, saved.id]}}); Object.assign(g, group); }
+      haptic(); toast("Сохранено"); open(saved.id);
+    }
     catch(e) { toast(e.message); haptic("error"); }
     finally { if (tg) tg.MainButton.hideProgress(); }
   };
@@ -369,7 +457,10 @@ async function importSeed(){
   try {
     const seed = await (await fetch("seed.json", {cache:"no-store"})).json();
     await call("import", {items: seed});
-    ITEMS = (await call("items")).items; haptic(); toast(`Загружено: ${seed.length}`); feed();
+    const starter = [["Женское", x => x.section === "Женское"], ["Мужское", x => x.section === "Мужское"], ["Унисекс", x => x.section === "Унисекс"],
+      ["Куртки и пуховики", x => x.type === "Куртки" || x.type === "Пуховики"], ["Низ", x => ["Брюки", "Джинсы", "Леггинсы"].includes(x.type)]];
+    if (!GROUPS.length) for (const [k, [name, f]] of starter.entries()) await call("group_save", {group: {name, sort: k, items: seed.filter(f).map(x => x.id)}});
+    const r = await call("items"); ITEMS = r.items; GROUPS = r.groups || []; haptic(); toast(`Загружено: ${seed.length}`); feed();
   } catch(e) { toast(e.message); b.disabled = false; b.textContent = "Загрузить каталог"; }
 }
 
@@ -400,7 +491,7 @@ async function orders(){
 if (tg) {
   tg.ready(); tg.expand();
   try { tg.setHeaderColor("bg_color"); } catch(_) {}
-  tg.BackButton.onClick(() => { if (view === "edit" && current) open(current.id); else if (view === "order") open(current.id); else feed(); });
+  tg.BackButton.onClick(() => { if (view === "edit" && current) open(current.id); else if (view === "order") open(current.id); else if (view === "group") groupsScreen(); else feed(); });
 }
 $("q").addEventListener("input", e => { query = e.target.value.trim().toLowerCase(); feed(); });
 $("add").onclick = () => { current = null; edit(null); };
@@ -409,10 +500,11 @@ $("tabs").querySelectorAll("button").forEach(b => b.onclick = () => { tab = b.da
 (async () => {
   try {
     const me = await call("me"); ADMIN = me.admin; USER = me.user;
-    ITEMS = (await call("items")).items || [];
+    const r = await call("items"); ITEMS = r.items || []; GROUPS = r.groups || [];
   } catch(e) {
     // сервер недоступен — показываем каталог из файла, только просмотр
-    try { const seed = await (await fetch("seed.json")).json(); ITEMS = seed.map(({private: _, ...it}) => it); } catch(_) {}
+    try { const seed = await (await fetch("seed.json")).json(); ITEMS = seed.map(({private: _, ...it}) => it);
+      GROUPS = ["Женское", "Мужское", "Унисекс"].map((name, id) => ({id, name, items: seed.filter(x => x.section === name).map(x => x.id)})); } catch(_) {}
   }
   $("add").hidden = !ADMIN; $("tabs").hidden = !ADMIN;
   if (ADMIN) loadOrders();
