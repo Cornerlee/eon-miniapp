@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>EON</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: two-column photo feed → full listing screen; Telegram supplies colors, back button and main button */
+:root{
+  --bg:var(--tg-theme-bg-color,#ffffff);
+  --bg2:var(--tg-theme-secondary-bg-color,#f1f2f4);
+  --ink:var(--tg-theme-text-color,#141518);
+  --muted:var(--tg-theme-hint-color,#80858d);
+  --link:var(--tg-theme-link-color,#2481cc);
+  --btn:var(--tg-theme-button-color,#2481cc);
+  --btn-ink:var(--tg-theme-button-text-color,#ffffff);
+  --line:color-mix(in srgb,var(--ink) 12%,transparent);
+  --ok:#2f9e5a; --warn:#d9822b;
+  --font:"Onest",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.45}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+.wrap{padding:12px 14px 96px;max-width:900px;margin:0 auto}
+.top{position:sticky;top:0;z-index:5;background:var(--bg);padding:10px 14px 8px;border-bottom:1px solid var(--line)}
+.top .row{display:flex;gap:10px;align-items:center;max-width:900px;margin:0 auto}
+.brand{font-weight:800;font-size:20px;letter-spacing:-.02em}
+.search{flex:1;min-width:0;background:var(--bg2);border:0;border-radius:12px;padding:9px 12px;font:inherit;color:var(--ink);outline:none}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:10px 14px 2px;max-width:900px;margin:0 auto;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;background:var(--bg2);border-radius:999px;padding:7px 14px;font-size:14px;font-weight:500}
+.chip[aria-pressed="true"]{background:var(--btn);color:var(--btn-ink)}
+.count{color:var(--muted);font-size:13px;margin:10px 0}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 10px}
+@media(min-width:620px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.ad{display:flex;flex-direction:column;gap:4px;text-align:left;min-width:0}
+.ad .ph{position:relative;aspect-ratio:1/1;border-radius:12px;overflow:hidden;background:var(--bg2)}
+.ad img{width:100%;height:100%;object-fit:cover;display:block}
+.ad .p{font-weight:700;font-size:16px;font-variant-numeric:tabular-nums}
+.ad .t{font-size:14px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ad .m{font-size:12px;color:var(--muted)}
+.st{position:absolute;left:8px;top:8px;font-size:11px;font-weight:700;border-radius:6px;padding:2px 7px;color:#fff}
+.st.posted{background:var(--btn)}.st.sold{background:var(--ok)}
+/* listing */
+.gal{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -14px;scrollbar-width:none}
+.gal::-webkit-scrollbar{display:none}
+.gal img{flex:none;width:100%;aspect-ratio:1/1;object-fit:cover;scroll-snap-align:center;background:var(--bg2)}
+.dots{display:flex;justify-content:center;gap:5px;margin:8px 0 2px}
+.dots i{width:6px;height:6px;border-radius:50%;background:var(--line)}
+.dots i.on{background:var(--ink)}
+h1{font-size:21px;line-height:1.25;margin:10px 0 4px;font-weight:700;text-wrap:balance}
+.price{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums}
+.meta{color:var(--muted);font-size:13px}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0}
+.btn{border-radius:12px;padding:12px;font-weight:600;text-align:center;background:var(--bg2)}
+.btn.pri{background:var(--btn);color:var(--btn-ink)}
+.h{font-size:17px;font-weight:700;margin:20px 0 8px}
+.facts{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:7px 16px;margin:0}
+.facts dt{color:var(--muted)}.facts dd{margin:0}
+.desc{white-space:pre-line;margin:0}
+.status{display:flex;gap:6px;flex-wrap:wrap}
+.status button{background:var(--bg2);border-radius:10px;padding:8px 12px;font-size:14px}
+.status button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+details{background:var(--bg2);border-radius:14px;padding:12px 14px;margin-top:18px}
+summary{font-weight:700;cursor:pointer;list-style:none}
+summary::-webkit-details-marker{display:none}
+.set{display:flex;flex-direction:column;gap:12px;margin-top:12px}
+.lbl{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:4px}
+.money{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.money div{background:var(--bg);border-radius:10px;padding:8px}
+.money b{display:block;font-size:16px;font-variant-numeric:tabular-nums}
+.money span{font-size:11px;color:var(--muted)}
+.good{color:var(--ok)}.bad{color:var(--warn)}
+.src{display:block;background:var(--bg);border-radius:10px;padding:10px 12px;color:var(--link);font-weight:600;text-align:left;width:100%}
+input.f,textarea.f{width:100%;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:9px 11px;font:inherit}
+textarea.f{min-height:180px;resize:vertical}
+.note{font-size:13px;color:var(--muted)}
+.warn{color:var(--warn);font-size:13px}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;z-index:20}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header class="top" id="top"><div class="row"><div class="brand">EON</div><input class="search" id="q" type="search" placeholder="Поиск"></div></header>
+<div class="chips" id="chips"></div>
+<main class="wrap" id="app"></main>
+<div class="toast" id="toast" hidden></div>
+<script src="data.js"></script>
+<script>
+const tg = window.Telegram && window.Telegram.WebApp;
+const ITEMS = window.EON_ITEMS || [];
+const APP_URL = location.href.split("#")[0];
+const app = document.getElementById("app");
+let filter = "Все", query = "", current = null, state = {};
+
+// --- хранилище: облако Telegram (синхронизируется между вашими устройствами), запасной вариант — браузер
+const store = {
+  get(cb){
+    if (tg && tg.CloudStorage && tg.isVersionAtLeast && tg.isVersionAtLeast("6.9")) {
+      tg.CloudStorage.getItem("eon_state", (e, v) => { try { cb(JSON.parse(v || "{}")); } catch(_) { cb({}); } });
+    } else { try { cb(JSON.parse(localStorage.getItem("eon_state") || "{}")); } catch(_) { cb({}); } }
+  },
+  set(v){
+    const s = JSON.stringify(v);
+    if (tg && tg.CloudStorage && tg.isVersionAtLeast && tg.isVersionAtLeast("6.9")) tg.CloudStorage.setItem("eon_state", s);
+    try { localStorage.setItem("eon_state", s); } catch(_) {}
+  }
+};
+const S = id => state[id] || (state[id] = {});
+const F = (it, k) => (S(it.id)[k] != null ? S(it.id)[k] : it[k]);
+const rub = n => Number(n).toLocaleString("ru-RU") + " ₽";
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const haptic = t => { try { tg && tg.HapticFeedback && tg.HapticFeedback.notificationOccurred(t || "success"); } catch(_) {} };
+function toast(t){ const el = document.getElementById("toast"); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => el.hidden = true, 1700); }
+const adText = it => `${F(it,"title")}\n\n${F(it,"desc")}\n\nЦена: ${rub(F(it,"price"))}`;
+async function copy(text){
+  try { await navigator.clipboard.writeText(text); }
+  catch(_) { const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); } catch(e) {} ta.remove(); }
+  haptic(); toast("Скопировано");
+}
+const STATUS = {none:"Не выложено", posted:"Выложено", sold:"Продано"};
+
+function chips(){
+  const lines = ["Все", "Она", "Улица", "Мужская база"];
+  const el = document.getElementById("chips");
+  el.innerHTML = lines.map(l => `<button class="chip" data-l="${l}" aria-pressed="${l===filter}">${l}</button>`).join("");
+  el.querySelectorAll(".chip").forEach(b => b.onclick = () => { filter = b.dataset.l; chips(); feed(); });
+}
+
+function feed(){
+  current = null;
+  document.getElementById("top").hidden = false; document.getElementById("chips").hidden = false;
+  if (tg) { tg.BackButton.hide(); tg.MainButton.hide(); }
+  const list = ITEMS.filter(it => (filter === "Все" || it.line === filter) && (!query || F(it,"title").toLowerCase().includes(query)));
+  const sold = ITEMS.filter(it => S(it.id).status === "sold").length, posted = ITEMS.filter(it => S(it.id).status === "posted").length;
+  app.innerHTML = `<div class="count">${list.length} из ${ITEMS.length} · выложено ${posted} · продано ${sold}</div>
+    <div class="grid">${list.map(it => { const s = S(it.id).status; return `
+      <button class="ad" data-id="${it.id}">
+        <div class="ph"><img src="${it.photos[0]}" alt="" loading="lazy">${s && s!=="none" ? `<span class="st ${s}">${STATUS[s]}</span>` : ""}</div>
+        <div class="p">${rub(F(it,"price"))}</div>
+        <div class="t">${esc(F(it,"title"))}</div>
+        <div class="m">${it.id} · ${esc(it.sizes)}</div>
+      </button>`; }).join("") || '<p class="note">Ничего не нашлось.</p>'}</div>`;
+  app.querySelectorAll(".ad").forEach(b => b.onclick = () => open(b.dataset.id));
+  window.scrollTo(0, 0);
+}
+
+function open(id){
+  const it = ITEMS.find(x => x.id === id); if (!it) return feed();
+  current = it;
+  document.getElementById("top").hidden = true; document.getElementById("chips").hidden = true;
+  const price = F(it,"price"), profit = price - it.cost, mult = (price / it.cost).toFixed(1), st = S(it.id).status || "none";
+  app.innerHTML = `
+    <div class="gal" id="gal">${it.photos.map(p => `<img src="${p}" alt="">`).join("")}</div>
+    ${it.photos.length > 1 ? `<div class="dots" id="dots">${it.photos.map((_, i) => `<i class="${i?"":"on"}"></i>`).join("")}</div>` : ""}
+    <h1>${esc(F(it,"title"))}</h1>
+    <div class="price">${rub(price)}</div>
+    <div class="meta">${it.id} · ${it.line} · Москва · под заказ 2–3 недели</div>
+    <div class="actions"><button class="btn pri" id="cp">Скопировать текст</button><button class="btn" id="sh">Отправить в чат</button></div>
+    <div class="h">Статус</div>
+    <div class="status">${Object.entries(STATUS).map(([k,v]) => `<button data-s="${k}" aria-pressed="${k===st}">${v}</button>`).join("")}</div>
+    <div class="h">Характеристики</div>
+    <dl class="facts"><dt>Состояние</dt><dd>Новое</dd><dt>Размер</dt><dd>${esc(it.sizes)}</dd>${it.facts.map(([k,v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>
+    <div class="h">Описание</div>
+    <p class="desc">${esc(F(it,"desc"))}</p>
+    <details id="det"><summary>⚙ Настройки карточки</summary><div class="set">
+      <div><span class="lbl">Где заказывать</span>${it.links.map(([n,u]) => `<button class="src" data-u="${u}">${esc(n)} ↗</button>`).join("")}</div>
+      <div><span class="lbl">В заказе</span>${esc(it.qty)}</div>
+      <div class="money"><div><b>¥${it.cny}</b><span>закупка</span></div><div><b>${rub(it.cost)}</b><span>под ключ</span></div><div><b class="${mult>=1.7?"good":"bad"}">${profit>0?"+":""}${rub(profit)}</b><span>с вещи · ×${mult}</span></div></div>
+      <p class="note">Под ключ = цена × 12 ₽ + карго 40 ¥/кг (~${it.kg} кг).</p>
+      ${it.warn ? `<p class="warn">⚠ ${esc(it.warn)}</p>` : ""}
+      <div><label class="lbl" for="et">Название (до 50 знаков)</label><input class="f" id="et" maxlength="50" value="${esc(F(it,"title"))}"></div>
+      <div><label class="lbl" for="ep">Цена, ₽</label><input class="f" id="ep" type="number" inputmode="numeric" step="10" value="${price}"></div>
+      <div><label class="lbl" for="ed">Описание</label><textarea class="f" id="ed">${esc(F(it,"desc"))}</textarea></div>
+      <div class="actions"><button class="btn pri" id="sv">Сохранить</button><button class="btn" id="rs">Вернуть исходное</button></div>
+      <p class="note">Правки сохраняются в вашем Telegram и видны на всех ваших устройствах.</p>
+    </div></details>`;
+  window.scrollTo(0, 0);
+  const gal = document.getElementById("gal"), dots = document.getElementById("dots");
+  if (dots) gal.addEventListener("scroll", () => { const i = Math.round(gal.scrollLeft / gal.clientWidth); dots.querySelectorAll("i").forEach((d, j) => d.classList.toggle("on", i === j)); }, {passive: true});
+  document.getElementById("cp").onclick = () => copy(adText(it));
+  document.getElementById("sh").onclick = () => {
+    const url = "https://t.me/share/url?url=" + encodeURIComponent(APP_URL) + "&text=" + encodeURIComponent(adText(it));
+    if (tg && tg.openTelegramLink) tg.openTelegramLink(url); else window.open(url, "_blank");
+  };
+  app.querySelectorAll(".status button").forEach(b => b.onclick = () => { S(it.id).status = b.dataset.s; store.set(state); haptic(); open(it.id); });
+  app.querySelectorAll(".src").forEach(b => b.onclick = () => { if (tg && tg.openLink) tg.openLink(b.dataset.u); else window.open(b.dataset.u, "_blank"); });
+  document.getElementById("sv").onclick = () => {
+    const t = document.getElementById("et").value.trim(), p = parseInt(document.getElementById("ep").value, 10);
+    if (!t) { toast("Название не может быть пустым"); return; }
+    if (!(p > 0)) { toast("Укажите цену числом"); return; }
+    Object.assign(S(it.id), {title: t, price: p, desc: document.getElementById("ed").value});
+    store.set(state); haptic(); toast("Сохранено"); open(it.id);
+  };
+  document.getElementById("rs").onclick = () => { const s = S(it.id).status; state[it.id] = s ? {status: s} : {}; store.set(state); toast("Вернул исходное"); open(it.id); };
+  if (tg) {
+    tg.BackButton.show();
+    tg.MainButton.setParams({text: "Скопировать объявление", is_visible: true});
+  }
+}
+
+if (tg) {
+  tg.ready(); tg.expand();
+  try { tg.setHeaderColor("bg_color"); } catch(_) {}
+  tg.BackButton.onClick(() => feed());
+  tg.MainButton.onClick(() => { if (current) copy(adText(current)); });
+}
+document.getElementById("q").addEventListener("input", e => { query = e.target.value.trim().toLowerCase(); feed(); });
+store.get(v => { state = v || {}; chips(); feed(); });
+</script>
+</body>
+</html>
