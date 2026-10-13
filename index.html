@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap">
 <style>
-/* Layout: two-column photo feed → full listing screen; Telegram supplies colors, back button and main button */
+/* Клиент: лента → карточка → заказ. Админ: то же + редактор, заказы, импорт. Цвета и кнопки — из Telegram */
 :root{
   --bg:var(--tg-theme-bg-color,#ffffff);
   --bg2:var(--tg-theme-secondary-bg-color,#f1f2f4);
@@ -17,6 +17,7 @@
   --link:var(--tg-theme-link-color,#2481cc);
   --btn:var(--tg-theme-button-color,#2481cc);
   --btn-ink:var(--tg-theme-button-text-color,#ffffff);
+  --danger:var(--tg-theme-destructive-text-color,#d64545);
   --line:color-mix(in srgb,var(--ink) 12%,transparent);
   --ok:#2f9e5a; --warn:#d9822b;
   --font:"Onest",system-ui,-apple-system,"Segoe UI",sans-serif;
@@ -24,16 +25,23 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.45}
 button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
-.wrap{padding:12px 14px 96px;max-width:900px;margin:0 auto}
-.top{position:sticky;top:0;z-index:5;background:var(--bg);padding:10px 14px 8px;border-bottom:1px solid var(--line)}
+.wrap{padding:12px 14px 110px;max-width:900px;margin:0 auto}
+.top{position:sticky;top:0;z-index:5;background:var(--bg);padding:10px 14px 0;border-bottom:1px solid var(--line)}
 .top .row{display:flex;gap:10px;align-items:center;max-width:900px;margin:0 auto}
 .brand{font-weight:800;font-size:20px;letter-spacing:-.02em}
 .search{flex:1;min-width:0;background:var(--bg2);border:0;border-radius:12px;padding:9px 12px;font:inherit;color:var(--ink);outline:none}
-.chips{display:flex;gap:8px;overflow-x:auto;padding:10px 14px 2px;max-width:900px;margin:0 auto;scrollbar-width:none}
+.iconbtn{flex:none;width:38px;height:38px;border-radius:12px;background:var(--btn);color:var(--btn-ink);font-size:22px;line-height:1}
+.tabs{display:flex;gap:18px;max-width:900px;margin:8px auto 0}
+.tabs button{padding:6px 0 9px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent}
+.tabs button[aria-pressed="true"]{color:var(--ink);border-color:var(--btn)}
+.tabs .badge{display:inline-block;min-width:18px;padding:0 5px;border-radius:9px;background:var(--danger);color:#fff;font-size:11px;line-height:18px;text-align:center;margin-left:4px}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:10px 0 0;scrollbar-width:none;max-width:900px;margin:0 auto}
 .chips::-webkit-scrollbar{display:none}
+.chips.sub .chip{font-size:13px;padding:5px 12px}
 .chip{flex:none;background:var(--bg2);border-radius:999px;padding:7px 14px;font-size:14px;font-weight:500}
 .chip[aria-pressed="true"]{background:var(--btn);color:var(--btn-ink)}
-.count{color:var(--muted);font-size:13px;margin:10px 0}
+.chipsbox{padding-bottom:10px}
+.count{color:var(--muted);font-size:13px;margin:4px 0 10px}
 .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 10px}
 @media(min-width:620px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .ad{display:flex;flex-direction:column;gap:4px;text-align:left;min-width:0}
@@ -42,9 +50,9 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .ad .p{font-weight:700;font-size:16px;font-variant-numeric:tabular-nums}
 .ad .t{font-size:14px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .ad .m{font-size:12px;color:var(--muted)}
-.st{position:absolute;left:8px;top:8px;font-size:11px;font-weight:700;border-radius:6px;padding:2px 7px;color:#fff}
-.st.posted{background:var(--btn)}.st.sold{background:var(--ok)}
-/* listing */
+.st{position:absolute;left:8px;top:8px;font-size:11px;font-weight:700;border-radius:6px;padding:2px 7px;color:#fff;background:#0009}
+.st.sold{background:var(--ok)}
+/* карточка */
 .gal{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -14px;scrollbar-width:none}
 .gal::-webkit-scrollbar{display:none}
 .gal img{flex:none;width:100%;aspect-ratio:1/1;object-fit:cover;scroll-snap-align:center;background:var(--bg2)}
@@ -57,159 +65,359 @@ h1{font-size:21px;line-height:1.25;margin:10px 0 4px;font-weight:700;text-wrap:b
 .actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0}
 .btn{border-radius:12px;padding:12px;font-weight:600;text-align:center;background:var(--bg2)}
 .btn.pri{background:var(--btn);color:var(--btn-ink)}
+.btn.del{color:var(--danger)}
+.btn[disabled]{opacity:.5}
 .h{font-size:17px;font-weight:700;margin:20px 0 8px}
 .facts{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:7px 16px;margin:0}
 .facts dt{color:var(--muted)}.facts dd{margin:0}
 .desc{white-space:pre-line;margin:0}
-.status{display:flex;gap:6px;flex-wrap:wrap}
-.status button{background:var(--bg2);border-radius:10px;padding:8px 12px;font-size:14px}
-.status button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
-details{background:var(--bg2);border-radius:14px;padding:12px 14px;margin-top:18px}
-summary{font-weight:700;cursor:pointer;list-style:none}
-summary::-webkit-details-marker{display:none}
-.set{display:flex;flex-direction:column;gap:12px;margin-top:12px}
+.box{background:var(--bg2);border-radius:14px;padding:12px 14px;margin-top:18px;display:flex;flex-direction:column;gap:12px}
+.box .bt{font-weight:700}
 .lbl{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:4px}
 .money{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 .money div{background:var(--bg);border-radius:10px;padding:8px}
 .money b{display:block;font-size:16px;font-variant-numeric:tabular-nums}
 .money span{font-size:11px;color:var(--muted)}
 .good{color:var(--ok)}.bad{color:var(--warn)}
-.src{display:block;background:var(--bg);border-radius:10px;padding:10px 12px;color:var(--link);font-weight:600;text-align:left;width:100%}
-input.f,textarea.f{width:100%;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:9px 11px;font:inherit}
-textarea.f{min-height:180px;resize:vertical}
+.src{display:block;background:var(--bg);border-radius:10px;padding:10px 12px;color:var(--link);font-weight:600;text-align:left;width:100%;margin-top:6px}
+.f{width:100%;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:9px 11px;font:inherit}
+textarea.f{min-height:110px;resize:vertical}
+textarea.f.big{min-height:220px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .note{font-size:13px;color:var(--muted)}
 .warn{color:var(--warn);font-size:13px}
-.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;z-index:20}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{background:var(--bg);border-radius:10px;padding:8px 12px;font-size:14px}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+/* редактор фото */
+.pgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.pcell{position:relative;aspect-ratio:1/1;border-radius:10px;overflow:hidden;background:var(--bg)}
+.pcell img{width:100%;height:100%;object-fit:cover;display:block}
+.pcell .x,.pcell .l{position:absolute;top:4px;width:24px;height:24px;border-radius:50%;background:#000a;color:#fff;font-size:14px;line-height:24px}
+.pcell .x{right:4px}.pcell .l{left:4px}
+.pcell.first::after{content:"обложка";position:absolute;left:0;right:0;bottom:0;font-size:10px;text-align:center;background:#000a;color:#fff;padding:2px}
+.padd{display:flex;align-items:center;justify-content:center;aspect-ratio:1/1;border-radius:10px;border:1.5px dashed var(--line);color:var(--muted);font-size:26px;cursor:pointer}
+/* заказ */
+.sizes{display:flex;gap:8px;flex-wrap:wrap}
+.sizes button{min-width:48px;background:var(--bg2);border-radius:10px;padding:9px 12px;font-weight:600}
+.sizes button[aria-pressed="true"]{background:var(--btn);color:var(--btn-ink)}
+.done{text-align:center;padding:40px 10px}
+.done .big{font-size:44px}
+/* заказы */
+.ord{display:grid;grid-template-columns:64px minmax(0,1fr);gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}
+.ord img{width:64px;height:64px;border-radius:10px;object-fit:cover;background:var(--bg2)}
+.ord .t{font-weight:600}
+.ord .row{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.ord .row button{background:var(--bg2);border-radius:9px;padding:6px 10px;font-size:13px;font-weight:600}
+.ord.new .t::before{content:"● ";color:var(--danger)}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;z-index:20;max-width:90vw;text-align:center}
+.spin{padding:60px 0;text-align:center;color:var(--muted)}
 [hidden]{display:none!important}
 </style>
 </head>
 <body>
-<header class="top" id="top"><div class="row"><div class="brand">EON</div><input class="search" id="q" type="search" placeholder="Поиск"></div></header>
-<div class="chips" id="chips"></div>
-<main class="wrap" id="app"></main>
+<header class="top" id="top">
+  <div class="row"><div class="brand">EON</div><input class="search" id="q" type="search" placeholder="Поиск"><button class="iconbtn" id="add" hidden aria-label="Добавить товар">+</button></div>
+  <div class="tabs" id="tabs" hidden><button data-t="items" aria-pressed="true">Товары</button><button data-t="orders" aria-pressed="false">Заказы<span class="badge" id="nb" hidden></span></button></div>
+  <div class="chipsbox" id="chipsbox"><div class="chips" id="secs"></div><div class="chips sub" id="types"></div></div>
+</header>
+<main class="wrap" id="app"><div class="spin">Загрузка…</div></main>
+<input type="file" id="file" accept="image/*" multiple hidden>
 <div class="toast" id="toast" hidden></div>
-<script src="data.js"></script>
+<script src="config.js"></script>
 <script>
 const tg = window.Telegram && window.Telegram.WebApp;
-const ITEMS = window.EON_ITEMS || [];
-const APP_URL = location.href.split("#")[0];
+const API = window.EON_API || "";
 const app = document.getElementById("app");
-let filter = "Все", query = "", current = null, state = {};
+let ITEMS = [], ORDERS = [], ADMIN = false, USER = null;
+let sec = "Все", type = "Все", query = "", tab = "items", current = null, view = "feed";
 
-// --- хранилище: облако Telegram (синхронизируется между вашими устройствами), запасной вариант — браузер
-const store = {
-  get(cb){
-    if (tg && tg.CloudStorage && tg.isVersionAtLeast && tg.isVersionAtLeast("6.9")) {
-      tg.CloudStorage.getItem("eon_state", (e, v) => { try { cb(JSON.parse(v || "{}")); } catch(_) { cb({}); } });
-    } else { try { cb(JSON.parse(localStorage.getItem("eon_state") || "{}")); } catch(_) { cb({}); } }
-  },
-  set(v){
-    const s = JSON.stringify(v);
-    if (tg && tg.CloudStorage && tg.isVersionAtLeast && tg.isVersionAtLeast("6.9")) tg.CloudStorage.setItem("eon_state", s);
-    try { localStorage.setItem("eon_state", s); } catch(_) {}
-  }
-};
-const S = id => state[id] || (state[id] = {});
-const F = (it, k) => (S(it.id)[k] != null ? S(it.id)[k] : it[k]);
-const rub = n => Number(n).toLocaleString("ru-RU") + " ₽";
-const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const rub = n => Number(n || 0).toLocaleString("ru-RU") + " ₽";
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const haptic = t => { try { tg && tg.HapticFeedback && tg.HapticFeedback.notificationOccurred(t || "success"); } catch(_) {} };
-function toast(t){ const el = document.getElementById("toast"); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => el.hidden = true, 1700); }
-const adText = it => `${F(it,"title")}\n\n${F(it,"desc")}\n\nЦена: ${rub(F(it,"price"))}`;
+const $ = id => document.getElementById(id);
+function toast(t){ const el = $("toast"); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => el.hidden = true, 2200); }
+const STATUS = {active:"В продаже", hidden:"Скрыто", sold:"Продано"};
+const SECTIONS = ["Женское", "Мужское", "Унисекс"];
+
+async function call(action, data){
+  if (!API) throw new Error("Сервер не подключён");
+  const r = await fetch(API, {method:"POST", headers:{"content-type":"application/json", "x-init-data": (tg && tg.initData) || ""}, body: JSON.stringify({action, ...data})});
+  const j = await r.json().catch(() => ({error:"Ошибка сервера"}));
+  if (j.error) throw new Error(j.error);
+  return j;
+}
 async function copy(text){
   try { await navigator.clipboard.writeText(text); }
   catch(_) { const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); } catch(e) {} ta.remove(); }
   haptic(); toast("Скопировано");
 }
-const STATUS = {none:"Не выложено", posted:"Выложено", sold:"Продано"};
-
-function chips(){
-  const lines = ["Все", "Она", "Улица", "Мужская база"];
-  const el = document.getElementById("chips");
-  el.innerHTML = lines.map(l => `<button class="chip" data-l="${l}" aria-pressed="${l===filter}">${l}</button>`).join("");
-  el.querySelectorAll(".chip").forEach(b => b.onclick = () => { filter = b.dataset.l; chips(); feed(); });
+const adText = it => `${it.title}\n\n${it.description}\n\nЦена: ${rub(it.price)}`;
+function setMain(text, fn){
+  if (!tg) return;
+  tg.MainButton.offClick(setMain.fn || (() => {}));
+  if (!text) { tg.MainButton.hide(); return; }
+  setMain.fn = fn; tg.MainButton.setParams({text, is_visible:true, is_active:true}); tg.MainButton.onClick(fn);
 }
+function back(on){ if (tg) on ? tg.BackButton.show() : tg.BackButton.hide(); }
+function header(show){ $("top").hidden = !show; }
 
+// ---------- лента ----------
+function chips(){
+  const visible = ITEMS.filter(it => ADMIN || it.status !== "hidden");
+  const secs = ["Все", ...SECTIONS.filter(s => visible.some(it => it.section === s)), ...[...new Set(visible.map(it => it.section).filter(s => s && !SECTIONS.includes(s)))]];
+  const inSec = visible.filter(it => sec === "Все" || it.section === sec);
+  const types = ["Все", ...[...new Set(inSec.map(it => it.type).filter(Boolean))].sort()];
+  if (!types.includes(type)) type = "Все";
+  $("secs").innerHTML = secs.map(s => `<button class="chip" data-s="${esc(s)}" aria-pressed="${s===sec}">${esc(s)}</button>`).join("");
+  $("types").innerHTML = types.length > 2 ? types.map(s => `<button class="chip" data-t="${esc(s)}" aria-pressed="${s===type}">${esc(s)}</button>`).join("") : "";
+  $("secs").querySelectorAll(".chip").forEach(b => b.onclick = () => { sec = b.dataset.s; type = "Все"; feed(); });
+  $("types").querySelectorAll(".chip").forEach(b => b.onclick = () => { type = b.dataset.t; feed(); });
+}
 function feed(){
-  current = null;
-  document.getElementById("top").hidden = false; document.getElementById("chips").hidden = false;
-  if (tg) { tg.BackButton.hide(); tg.MainButton.hide(); }
-  const list = ITEMS.filter(it => (filter === "Все" || it.line === filter) && (!query || F(it,"title").toLowerCase().includes(query)));
-  const sold = ITEMS.filter(it => S(it.id).status === "sold").length, posted = ITEMS.filter(it => S(it.id).status === "posted").length;
-  app.innerHTML = `<div class="count">${list.length} из ${ITEMS.length} · выложено ${posted} · продано ${sold}</div>
-    <div class="grid">${list.map(it => { const s = S(it.id).status; return `
-      <button class="ad" data-id="${it.id}">
-        <div class="ph"><img src="${it.photos[0]}" alt="" loading="lazy">${s && s!=="none" ? `<span class="st ${s}">${STATUS[s]}</span>` : ""}</div>
-        <div class="p">${rub(F(it,"price"))}</div>
-        <div class="t">${esc(F(it,"title"))}</div>
-        <div class="m">${it.id} · ${esc(it.sizes)}</div>
-      </button>`; }).join("") || '<p class="note">Ничего не нашлось.</p>'}</div>`;
+  view = "feed"; current = null; header(true); back(false); setMain(null);
+  $("chipsbox").hidden = tab !== "items"; $("q").hidden = tab !== "items";
+  if (tab === "orders") return orders();
+  chips();
+  const list = ITEMS.filter(it => (ADMIN || it.status !== "hidden") && (sec === "Все" || it.section === sec) && (type === "Все" || it.type === type) && (!query || (it.title + " " + it.id).toLowerCase().includes(query)));
+  const imp = ADMIN && !ITEMS.length ? `<div class="box"><div class="bt">Каталог пуст</div><p class="note">Загрузить 29 вещей из первого заказа вместе с фото, ценами и ссылками на поставщиков?</p><button class="btn pri" id="imp">Загрузить каталог</button></div>` : "";
+  app.innerHTML = `${imp}<div class="count">${list.length} ${plural(list.length, "товар", "товара", "товаров")}${ADMIN ? ` · в продаже ${ITEMS.filter(i => i.status==="active").length} · продано ${ITEMS.filter(i => i.status==="sold").length}` : ""}</div>
+    <div class="grid">${list.map(it => `
+      <button class="ad" data-id="${esc(it.id)}">
+        <div class="ph">${it.photos[0] ? `<img src="${esc(it.photos[0])}" alt="" loading="lazy">` : ""}${it.status !== "active" ? `<span class="st ${it.status}">${STATUS[it.status]}</span>` : ""}</div>
+        <div class="p">${rub(it.price)}</div>
+        <div class="t">${esc(it.title)}</div>
+        <div class="m">${esc(it.sizes)}</div>
+      </button>`).join("") || (ITEMS.length ? '<p class="note">Ничего не нашлось.</p>' : "")}</div>`;
   app.querySelectorAll(".ad").forEach(b => b.onclick = () => open(b.dataset.id));
+  if ($("imp")) $("imp").onclick = importSeed;
   window.scrollTo(0, 0);
 }
+const plural = (n, a, b, c) => { const m = n % 10, h = n % 100; return m === 1 && h !== 11 ? a : m >= 2 && m <= 4 && (h < 12 || h > 14) ? b : c; };
 
+// ---------- карточка ----------
 function open(id){
   const it = ITEMS.find(x => x.id === id); if (!it) return feed();
-  current = it;
-  document.getElementById("top").hidden = true; document.getElementById("chips").hidden = true;
-  const price = F(it,"price"), profit = price - it.cost, mult = (price / it.cost).toFixed(1), st = S(it.id).status || "none";
+  view = "item"; current = it; header(false); back(true);
+  const p = it.private || {};
+  const cost = p.cost || 0, profit = it.price - cost, mult = cost ? (it.price / cost).toFixed(1) : "—";
   app.innerHTML = `
-    <div class="gal" id="gal">${it.photos.map(p => `<img src="${p}" alt="">`).join("")}</div>
+    <div class="gal" id="gal">${it.photos.map(u => `<img src="${esc(u)}" alt="">`).join("")}</div>
     ${it.photos.length > 1 ? `<div class="dots" id="dots">${it.photos.map((_, i) => `<i class="${i?"":"on"}"></i>`).join("")}</div>` : ""}
-    <h1>${esc(F(it,"title"))}</h1>
-    <div class="price">${rub(price)}</div>
-    <div class="meta">${it.id} · ${it.line} · Москва · под заказ 2–3 недели</div>
-    <div class="actions"><button class="btn pri" id="cp">Скопировать текст</button><button class="btn" id="sh">Отправить в чат</button></div>
-    <div class="h">Статус</div>
-    <div class="status">${Object.entries(STATUS).map(([k,v]) => `<button data-s="${k}" aria-pressed="${k===st}">${v}</button>`).join("")}</div>
+    <h1>${esc(it.title)}</h1>
+    <div class="price">${rub(it.price)}</div>
+    <div class="meta">${[it.section, it.type].filter(Boolean).map(esc).join(" · ")} · Москва · под заказ 2–3 недели</div>
+    ${ADMIN ? `<div class="actions"><button class="btn pri" id="ed">Редактировать</button><button class="btn" id="cp">Текст для Авито</button></div>`
+            : `<div class="actions"><button class="btn pri" id="ord">Заказать</button><button class="btn" id="ask">Задать вопрос</button></div>`}
     <div class="h">Характеристики</div>
-    <dl class="facts"><dt>Состояние</dt><dd>Новое</dd><dt>Размер</dt><dd>${esc(it.sizes)}</dd>${it.facts.map(([k,v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>
+    <dl class="facts"><dt>Состояние</dt><dd>Новое</dd>${it.sizes ? `<dt>Размер</dt><dd>${esc(it.sizes)}</dd>` : ""}${(it.facts || []).map(([k,v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>
     <div class="h">Описание</div>
-    <p class="desc">${esc(F(it,"desc"))}</p>
-    <details id="det"><summary>⚙ Настройки карточки</summary><div class="set">
-      <div><span class="lbl">Где заказывать</span>${it.links.map(([n,u]) => `<button class="src" data-u="${u}">${esc(n)} ↗</button>`).join("")}</div>
-      <div><span class="lbl">В заказе</span>${esc(it.qty)}</div>
-      <div class="money"><div><b>¥${it.cny}</b><span>закупка</span></div><div><b>${rub(it.cost)}</b><span>под ключ</span></div><div><b class="${mult>=1.7?"good":"bad"}">${profit>0?"+":""}${rub(profit)}</b><span>с вещи · ×${mult}</span></div></div>
-      <p class="note">Под ключ = цена × 12 ₽ + карго 40 ¥/кг (~${it.kg} кг).</p>
-      ${it.warn ? `<p class="warn">⚠ ${esc(it.warn)}</p>` : ""}
-      <div><label class="lbl" for="et">Название (до 50 знаков)</label><input class="f" id="et" maxlength="50" value="${esc(F(it,"title"))}"></div>
-      <div><label class="lbl" for="ep">Цена, ₽</label><input class="f" id="ep" type="number" inputmode="numeric" step="10" value="${price}"></div>
-      <div><label class="lbl" for="ed">Описание</label><textarea class="f" id="ed">${esc(F(it,"desc"))}</textarea></div>
-      <div class="actions"><button class="btn pri" id="sv">Сохранить</button><button class="btn" id="rs">Вернуть исходное</button></div>
-      <p class="note">Правки сохраняются в вашем Telegram и видны на всех ваших устройствах.</p>
-    </div></details>`;
+    <p class="desc">${esc(it.description)}</p>
+    ${ADMIN ? `<div class="box"><div class="bt">Для админов</div>
+      <div><span class="lbl">Статус</span><div class="seg">${Object.entries(STATUS).map(([k,v]) => `<button data-s="${k}" aria-pressed="${k===it.status}">${v}</button>`).join("")}</div></div>
+      ${(p.links || []).length ? `<div><span class="lbl">Где заказывать</span>${p.links.map(([n,u]) => `<button class="src" data-u="${esc(u)}">${esc(n)} ↗</button>`).join("")}</div>` : ""}
+      ${p.qty ? `<div><span class="lbl">В заказе</span>${esc(p.qty)}</div>` : ""}
+      ${cost ? `<div class="money"><div><b>¥${esc(p.cny)}</b><span>закупка</span></div><div><b>${rub(cost)}</b><span>под ключ</span></div><div><b class="${mult>=1.7?"good":"bad"}">${profit>0?"+":""}${rub(profit)}</b><span>с вещи · ×${mult}</span></div></div>` : ""}
+      ${p.warn ? `<p class="warn">⚠ ${esc(p.warn)}</p>` : ""}
+      <p class="note">Этот блок клиенты не видят.</p></div>` : ""}`;
   window.scrollTo(0, 0);
-  const gal = document.getElementById("gal"), dots = document.getElementById("dots");
-  if (dots) gal.addEventListener("scroll", () => { const i = Math.round(gal.scrollLeft / gal.clientWidth); dots.querySelectorAll("i").forEach((d, j) => d.classList.toggle("on", i === j)); }, {passive: true});
-  document.getElementById("cp").onclick = () => copy(adText(it));
-  document.getElementById("sh").onclick = () => {
-    const url = "https://t.me/share/url?url=" + encodeURIComponent(APP_URL) + "&text=" + encodeURIComponent(adText(it));
-    if (tg && tg.openTelegramLink) tg.openTelegramLink(url); else window.open(url, "_blank");
-  };
-  app.querySelectorAll(".status button").forEach(b => b.onclick = () => { S(it.id).status = b.dataset.s; store.set(state); haptic(); open(it.id); });
-  app.querySelectorAll(".src").forEach(b => b.onclick = () => { if (tg && tg.openLink) tg.openLink(b.dataset.u); else window.open(b.dataset.u, "_blank"); });
-  document.getElementById("sv").onclick = () => {
-    const t = document.getElementById("et").value.trim(), p = parseInt(document.getElementById("ep").value, 10);
-    if (!t) { toast("Название не может быть пустым"); return; }
-    if (!(p > 0)) { toast("Укажите цену числом"); return; }
-    Object.assign(S(it.id), {title: t, price: p, desc: document.getElementById("ed").value});
-    store.set(state); haptic(); toast("Сохранено"); open(it.id);
-  };
-  document.getElementById("rs").onclick = () => { const s = S(it.id).status; state[it.id] = s ? {status: s} : {}; store.set(state); toast("Вернул исходное"); open(it.id); };
-  if (tg) {
-    tg.BackButton.show();
-    tg.MainButton.setParams({text: "Скопировать объявление", is_visible: true});
+  const gal = $("gal"), dots = $("dots");
+  if (dots) gal.addEventListener("scroll", () => { const i = Math.round(gal.scrollLeft / gal.clientWidth); dots.querySelectorAll("i").forEach((d, j) => d.classList.toggle("on", i === j)); }, {passive:true});
+  if (ADMIN) {
+    $("ed").onclick = () => edit(it);
+    $("cp").onclick = () => copy(adText(it));
+    app.querySelectorAll(".seg button").forEach(b => b.onclick = async () => { try { await save({...it, status: b.dataset.s}); haptic(); open(it.id); } catch(e) { toast(e.message); } });
+    app.querySelectorAll(".src").forEach(b => b.onclick = () => { tg && tg.openLink ? tg.openLink(b.dataset.u) : window.open(b.dataset.u, "_blank"); });
+    setMain(null);
+  } else {
+    $("ord").onclick = () => orderForm(it);
+    $("ask").onclick = () => ask(it);
+    setMain(it.status === "sold" ? null : "Заказать", () => orderForm(it));
+    if (it.status === "sold") { $("ord").disabled = true; $("ord").textContent = "Продано"; }
   }
 }
 
+// ---------- клиент: заказ и вопрос ----------
+function orderForm(it){
+  if (it.status === "sold") return;
+  view = "order"; header(false); back(true);
+  const sizes = (it.sizes || "").split(/[\s,\/]+/).filter(s => /^(X{0,3}S|M|X{0,3}L|\d{2,3})$/i.test(s));
+  let size = sizes.length === 1 ? sizes[0] : "";
+  app.innerHTML = `
+    <h1>Заказ</h1>
+    <div class="ord" style="border:0"><img src="${esc(it.photos[0] || "")}" alt=""><div><div class="t">${esc(it.title)}</div><div class="meta">${rub(it.price)} · под заказ 2–3 недели</div></div></div>
+    ${sizes.length ? `<div class="h">Размер</div><div class="sizes">${sizes.map(s => `<button data-s="${esc(s)}" aria-pressed="${s===size}">${esc(s)}</button>`).join("")}</div>` : ""}
+    <div class="h">Комментарий</div>
+    <textarea class="f" id="cm" maxlength="500" placeholder="Рост, вес, цвет, как удобнее получить — по желанию"></textarea>
+    <p class="note">После заявки продавец напишет вам в этот чат с ботом: подтвердит наличие, срок и оплату. Предоплата сейчас не нужна.</p>`;
+  app.querySelectorAll(".sizes button").forEach(b => b.onclick = () => { size = b.dataset.s; app.querySelectorAll(".sizes button").forEach(x => x.setAttribute("aria-pressed", x === b)); });
+  const send = async () => {
+    if (sizes.length > 1 && !size) { toast("Выберите размер"); return; }
+    if (tg) tg.MainButton.showProgress();
+    try {
+      await call("order", {item_id: it.id, size, comment: $("cm").value.trim()});
+      haptic(); setMain(null); view = "done";
+      app.innerHTML = `<div class="done"><div class="big">✓</div><h1>Заявка отправлена</h1><p class="note">Продавец скоро напишет вам в чат с ботом EON.</p><button class="btn pri" id="bk" style="width:100%;margin-top:16px">Вернуться в каталог</button></div>`;
+      $("bk").onclick = feed;
+    } catch(e) { toast(e.message); haptic("error"); }
+    finally { if (tg) tg.MainButton.hideProgress(); }
+  };
+  setMain("Отправить заявку", send);
+  if (!tg || !tg.initData) app.insertAdjacentHTML("beforeend", `<button class="btn pri" id="snd" style="width:100%;margin-top:14px">Отправить заявку</button>`), $("snd").onclick = send;
+}
+async function ask(it){
+  try { await call("ask", {item_id: it.id}); haptic(); toast("Напишите вопрос в чат с ботом"); setTimeout(() => tg && tg.close(), 900); }
+  catch(e) { toast(e.message); }
+}
+
+// ---------- админ: редактор ----------
+function edit(it){
+  const isNew = !it;
+  it = it ? JSON.parse(JSON.stringify(it)) : {title:"", price:0, section: sec !== "Все" ? sec : "", type: type !== "Все" ? type : "", sizes:"", facts:[], description:"", photos:[], status:"active", private:{}};
+  const p = it.private = it.private || {};
+  view = "edit"; header(false); back(true);
+  const allSecs = [...new Set([...SECTIONS, ...ITEMS.map(i => i.section).filter(Boolean)])];
+  const allTypes = [...new Set(ITEMS.map(i => i.type).filter(Boolean))].sort();
+  app.innerHTML = `
+    <h1>${isNew ? "Новый товар" : "Редактирование · " + esc(it.id)}</h1>
+    <div class="h">Фото</div>
+    <div class="pgrid" id="pg"></div>
+    <p class="note">Первое фото — обложка. Стрелка ← двигает фото левее.</p>
+    <div class="h">Объявление</div>
+    <div class="box" style="margin-top:0">
+      <div><label class="lbl" for="e_t">Название (до 50 знаков)</label><input class="f" id="e_t" maxlength="50" value="${esc(it.title)}"></div>
+      <div class="two"><div><label class="lbl" for="e_p">Цена, ₽</label><input class="f" id="e_p" type="number" inputmode="numeric" step="10" value="${it.price || ""}"></div>
+        <div><label class="lbl" for="e_z">Размеры</label><input class="f" id="e_z" placeholder="S M L" value="${esc(it.sizes)}"></div></div>
+      <div class="two"><div><label class="lbl" for="e_s">Раздел</label><input class="f" id="e_s" list="dl_s" value="${esc(it.section)}"></div>
+        <div><label class="lbl" for="e_y">Тип</label><input class="f" id="e_y" list="dl_y" placeholder="Куртки" value="${esc(it.type)}"></div></div>
+      <datalist id="dl_s">${allSecs.map(s => `<option value="${esc(s)}">`).join("")}</datalist>
+      <datalist id="dl_y">${allTypes.map(s => `<option value="${esc(s)}">`).join("")}</datalist>
+      <div><span class="lbl">Статус</span><div class="seg" id="e_st">${Object.entries(STATUS).map(([k,v]) => `<button data-s="${k}" aria-pressed="${k===it.status}">${v}</button>`).join("")}</div></div>
+      <div><label class="lbl" for="e_f">Характеристики — по строке «Название: значение»</label><textarea class="f" id="e_f" placeholder="Ткань: хлопок 100%">${esc((it.facts || []).map(([k,v]) => k + ": " + v).join("\n"))}</textarea></div>
+      <div><label class="lbl" for="e_d">Описание</label><textarea class="f big" id="e_d">${esc(it.description)}</textarea></div>
+    </div>
+    <div class="h">Только для админов</div>
+    <div class="box" style="margin-top:0">
+      <div><label class="lbl" for="e_l">Ссылки на поставщика — по строке «Название | ссылка»</label><textarea class="f" id="e_l" placeholder="Pinduoduo | https://…">${esc((p.links || []).map(([n,u]) => n + " | " + u).join("\n"))}</textarea></div>
+      <div><label class="lbl" for="e_q">В заказе</label><input class="f" id="e_q" value="${esc(p.qty || "")}" placeholder="3 шт: 1M 2L"></div>
+      <div class="two"><div><label class="lbl" for="e_c">Закупка, ¥</label><input class="f" id="e_c" type="number" inputmode="decimal" value="${p.cny ?? ""}"></div>
+        <div><label class="lbl" for="e_k">Вес, кг</label><input class="f" id="e_k" type="number" inputmode="decimal" step="0.1" value="${p.kg ?? ""}"></div></div>
+      <p class="note" id="e_cost"></p>
+      <div><label class="lbl" for="e_w">Заметка</label><input class="f" id="e_w" value="${esc(p.warn || "")}"></div>
+    </div>
+    <div class="actions"><button class="btn pri" id="e_save">Сохранить</button>${isNew ? `<button class="btn" id="e_cancel">Отмена</button>` : `<button class="btn del" id="e_del">Удалить</button>`}</div>`;
+  const drawPhotos = () => {
+    $("pg").innerHTML = it.photos.map((u, i) => `<div class="pcell ${i ? "" : "first"}"><img src="${esc(u)}" alt="">${i ? `<button class="l" data-i="${i}" aria-label="Левее">←</button>` : ""}<button class="x" data-i="${i}" aria-label="Убрать">×</button></div>`).join("") + `<label class="padd" for="file" id="padd">+</label>`;
+    $("pg").querySelectorAll(".x").forEach(b => b.onclick = () => { it.photos.splice(+b.dataset.i, 1); drawPhotos(); });
+    $("pg").querySelectorAll(".l").forEach(b => b.onclick = () => { const i = +b.dataset.i; [it.photos[i-1], it.photos[i]] = [it.photos[i], it.photos[i-1]]; drawPhotos(); });
+  };
+  drawPhotos();
+  $("file").value = "";
+  $("file").onchange = async e => {
+    const files = [...e.target.files]; if (!files.length) return;
+    for (const [n, f] of files.entries()) {
+      toast(`Загружаю фото ${n + 1} из ${files.length}…`);
+      try { const {url} = await call("upload", {data: await shrink(f)}); it.photos.push(url); drawPhotos(); }
+      catch(err) { toast("Фото не загрузилось: " + err.message); }
+    }
+    toast("Фото добавлены");
+  };
+  const costNote = () => { const c = +$("e_c").value, k = +$("e_k").value; $("e_cost").textContent = c ? `Под ключ ≈ ${rub(Math.round((c * 12 + k * 480) / 10) * 10)} (¥ × 12 + карго 480 ₽/кг)` : ""; };
+  $("e_c").oninput = $("e_k").oninput = costNote; costNote();
+  $("e_st").querySelectorAll("button").forEach(b => b.onclick = () => { it.status = b.dataset.s; $("e_st").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b)); });
+  const doSave = async () => {
+    const title = $("e_t").value.trim(), price = parseInt($("e_p").value, 10);
+    if (!title) { toast("Введите название"); return; }
+    if (!(price > 0)) { toast("Укажите цену"); return; }
+    if (!it.photos.length) { toast("Добавьте хотя бы одно фото"); return; }
+    const cny = parseFloat($("e_c").value) || 0, kg = parseFloat($("e_k").value) || 0;
+    Object.assign(it, {title, price, sizes: $("e_z").value.trim(), section: $("e_s").value.trim(), type: $("e_y").value.trim(), description: $("e_d").value,
+      facts: $("e_f").value.split("\n").map(l => l.split(/:(.*)/s).map(s => s.trim())).filter(([k, v]) => k && v).map(([k, v]) => [k, v])});
+    Object.assign(it.private, {links: $("e_l").value.split("\n").map(l => l.split("|").map(s => s.trim())).filter(([n, u]) => n && u).map(([n, u]) => [n, u]),
+      qty: $("e_q").value.trim(), cny, kg, cost: cny ? Math.round((cny * 12 + kg * 480) / 10) * 10 : 0, warn: $("e_w").value.trim()});
+    if (tg) tg.MainButton.showProgress();
+    try { const saved = await save(it); haptic(); toast("Сохранено"); open(saved.id); }
+    catch(e) { toast(e.message); haptic("error"); }
+    finally { if (tg) tg.MainButton.hideProgress(); }
+  };
+  $("e_save").onclick = doSave;
+  setMain("Сохранить", doSave);
+  if ($("e_cancel")) $("e_cancel").onclick = feed;
+  if ($("e_del")) { let armed = false; $("e_del").onclick = async () => {
+    if (!armed) { armed = true; $("e_del").textContent = "Точно удалить?"; setTimeout(() => { armed = false; if ($("e_del")) $("e_del").textContent = "Удалить"; }, 3000); return; }
+    try { await call("delete", {id: it.id}); ITEMS = ITEMS.filter(x => x.id !== it.id); haptic(); toast("Удалено"); feed(); } catch(e) { toast(e.message); }
+  }; }
+  window.scrollTo(0, 0);
+}
+async function save(it){
+  const {item} = await call("save", {item: it});
+  const i = ITEMS.findIndex(x => x.id === item.id);
+  if (i >= 0) ITEMS[i] = item; else ITEMS.push(item);
+  return item;
+}
+// фото уменьшаем на телефоне до 1280 px, чтобы загрузка была быстрой
+async function shrink(file){
+  const img = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = URL.createObjectURL(file); });
+  const k = Math.min(1, 1280 / Math.max(img.naturalWidth, img.naturalHeight));
+  const c = document.createElement("canvas"); c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+  c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+  URL.revokeObjectURL(img.src);
+  return c.toDataURL("image/jpeg", 0.86).split(",")[1];
+}
+async function importSeed(){
+  const b = $("imp"); b.disabled = true; b.textContent = "Загружаю…";
+  try {
+    const seed = await (await fetch("seed.json", {cache:"no-store"})).json();
+    await call("import", {items: seed});
+    ITEMS = (await call("items")).items; haptic(); toast(`Загружено: ${seed.length}`); feed();
+  } catch(e) { toast(e.message); b.disabled = false; b.textContent = "Загрузить каталог"; }
+}
+
+// ---------- админ: заказы ----------
+async function loadOrders(){
+  try { ORDERS = (await call("orders")).orders || []; } catch(_) { ORDERS = []; }
+  const n = ORDERS.filter(o => o.status === "new").length;
+  $("nb").hidden = !n; $("nb").textContent = n;
+}
+async function orders(){
+  app.innerHTML = `<div class="spin">Загрузка…</div>`;
+  await loadOrders();
+  if (tab !== "orders" || view !== "feed") return;
+  app.innerHTML = ORDERS.length ? ORDERS.map(o => { const it = ITEMS.find(x => x.id === o.item_id) || {photos:[], title:o.item_id}; return `
+    <div class="ord ${o.status}">
+      <img src="${esc(it.photos[0] || "")}" alt="">
+      <div><div class="t">${esc(it.title)}</div>
+        <div class="meta">${esc(o.item_id)}${o.size ? " · размер " + esc(o.size) : ""} · ${new Date(o.created_at).toLocaleString("ru-RU", {day:"numeric", month:"short", hour:"2-digit", minute:"2-digit"})}</div>
+        <div>${esc(o.user_name)}</div>${o.comment ? `<div class="note">«${esc(o.comment)}»</div>` : ""}
+        <div class="row">${o.username ? `<button data-u="${esc(o.username)}">Написать</button>` : ""}<button data-id="${o.id}" data-s="${o.status === "new" ? "done" : "new"}">${o.status === "new" ? "✓ Обработан" : "Вернуть в новые"}</button></div>
+      </div></div>`; }).join("") + `<p class="note" style="margin-top:14px">Ответить клиенту можно и в чате с ботом: нажмите «Ответить» на сообщение о заказе.</p>`
+    : `<p class="note">Заказов пока нет. Когда клиент нажмёт «Заказать», заявка появится здесь и придёт вам в бота.</p>`;
+  app.querySelectorAll("[data-u]").forEach(b => b.onclick = () => tg ? tg.openTelegramLink("https://t.me/" + b.dataset.u) : window.open("https://t.me/" + b.dataset.u));
+  app.querySelectorAll("[data-id]").forEach(b => b.onclick = async () => { try { await call("order_status", {id: +b.dataset.id, status: b.dataset.s}); orders(); } catch(e) { toast(e.message); } });
+}
+
+// ---------- запуск ----------
 if (tg) {
   tg.ready(); tg.expand();
   try { tg.setHeaderColor("bg_color"); } catch(_) {}
-  tg.BackButton.onClick(() => feed());
-  tg.MainButton.onClick(() => { if (current) copy(adText(current)); });
+  tg.BackButton.onClick(() => { if (view === "edit" && current) open(current.id); else if (view === "order") open(current.id); else feed(); });
 }
-document.getElementById("q").addEventListener("input", e => { query = e.target.value.trim().toLowerCase(); feed(); });
-store.get(v => { state = v || {}; chips(); feed(); });
+$("q").addEventListener("input", e => { query = e.target.value.trim().toLowerCase(); feed(); });
+$("add").onclick = () => { current = null; edit(null); };
+$("tabs").querySelectorAll("button").forEach(b => b.onclick = () => { tab = b.dataset.t; $("tabs").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b)); feed(); });
+
+(async () => {
+  try {
+    const me = await call("me"); ADMIN = me.admin; USER = me.user;
+    ITEMS = (await call("items")).items || [];
+  } catch(e) {
+    // сервер недоступен — показываем каталог из файла, только просмотр
+    try { const seed = await (await fetch("seed.json")).json(); ITEMS = seed.map(({private: _, ...it}) => it); } catch(_) {}
+  }
+  $("add").hidden = !ADMIN; $("tabs").hidden = !ADMIN;
+  if (ADMIN) loadOrders();
+  feed();
+})();
 </script>
 </body>
 </html>
