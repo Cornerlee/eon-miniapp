@@ -3,12 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EON</title>
+<title>EP</title>
+<link rel="icon" href="icon.png">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@300;400;500;600;700&display=swap">
 <style>
-/* EON: тёмный монохромный магазин. Шапка (меню · EON · корзина) → экраны → нижняя панель Главная / Match / Лайки */
+/* EP: тёмный монохромный магазин. Шапка (меню · логотип · корзина) → экраны → нижняя панель Главная / Match / Лайки */
 :root{
   --bg:#0b0b0c; --card:#151517; --card2:#1d1d20; --fg:#f3f2ef; --muted:#8d8c88; --line:#2a2a2d;
   --inv:#f3f2ef; --inv-fg:#0b0b0c; --danger:#ff5a4f; --ok:#5cc28a;
@@ -28,7 +29,8 @@ img{display:block;max-width:100%}
 
 /* шапка */
 .top{position:fixed;top:0;left:0;right:0;height:calc(var(--top) + env(safe-area-inset-top,0px));padding:env(safe-area-inset-top,0px) 10px 0;display:flex;align-items:center;justify-content:space-between;z-index:30;background:linear-gradient(var(--bg) 60%,transparent)}
-.top .logo{position:absolute;left:50%;transform:translateX(-50%);font-weight:600;font-size:15px;letter-spacing:.42em;padding-left:.42em}
+.top .logo{position:absolute;left:50%;transform:translateX(-50%)}
+.top .logo img{height:24px;width:auto}
 .ib{width:40px;height:40px;display:grid;place-items:center;position:relative}
 .ib svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.5}
 .badge{position:absolute;top:4px;right:2px;min-width:16px;height:16px;border-radius:8px;background:var(--inv);color:var(--inv-fg);font-size:10px;font-weight:700;line-height:16px;text-align:center;padding:0 4px}
@@ -67,8 +69,8 @@ textarea.f.big{min-height:220px}
 .empty{padding:60px 0;text-align:center;color:var(--muted);font-size:12px;letter-spacing:.14em;text-transform:uppercase}
 
 /* главная: блок дропа */
-.hero{position:relative;margin:0 -12px;min-height:70vh;display:flex;background:#111 center/cover no-repeat}
-.hero::before{content:"";position:absolute;inset:0;background:linear-gradient(rgba(0,0,0,.35),rgba(0,0,0,.72) 55%,var(--bg))}
+.hero{position:relative;margin:0 -12px;min-height:82vh;display:flex;background:#111 center/cover no-repeat}
+.hero::before{content:"";position:absolute;inset:0;background:linear-gradient(rgba(0,0,0,.55),rgba(0,0,0,.1) 38%,rgba(0,0,0,.25) 70%,var(--bg))}
 .hero .frame{position:relative;margin:10px 12px 18px;border:1px solid rgba(255,255,255,.28);padding:22px 16px 18px;display:flex;flex-direction:column;flex:1}
 .hero .date{font-size:11px;letter-spacing:.16em}
 .hero .t{font-size:30px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;line-height:1.1;margin:8px 0 4px;text-wrap:balance}
@@ -182,6 +184,12 @@ textarea.f.big{min-height:220px}
 .money b{display:block;font-size:14px;font-weight:500}
 .money span{font-size:10px;color:var(--muted)}
 .good{color:var(--ok)}.bad{color:#e8a13a}
+.realbox{border:1px solid #3a3320;background:#16140f;padding:10px 12px;margin:-6px 0 16px}
+.realbox .ttl{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:#c9a54a;margin-bottom:6px}
+.realbox .rr{display:flex;justify-content:space-between;gap:12px;padding:5px 0;font-size:12px}
+.realbox .rr span{color:var(--muted)}
+.realbox .rr b{font-weight:500}
+.pc .real{font-size:10.5px;color:#c9a54a;margin-top:2px}
 .src{display:block;width:100%;text-align:left;padding:10px 0;border-bottom:1px solid var(--line);font-size:12px;color:#9cc4ff}
 .pgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
 .pcell{position:relative;aspect-ratio:1/1;background:#fff;overflow:hidden}
@@ -208,7 +216,7 @@ textarea.f.big{min-height:220px}
 <body>
 <header class="top">
   <button class="ib" id="bMenu" aria-label="Меню"><svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg><span class="badge red" id="bMenuN" hidden></span></button>
-  <div class="logo">EON</div>
+  <div class="logo"><img src="logo.png" alt="EP"></div>
   <button class="ib" id="bCart" aria-label="Корзина"><svg viewBox="0 0 24 24"><path d="M3 4h2l2.2 11h11.3L21 7H7"/><circle cx="9" cy="19.5" r="1.3"/><circle cx="17" cy="19.5" r="1.3"/></svg><span class="badge" id="bCartN" hidden></span></button>
 </header>
 <main id="app"><div class="spin">Загрузка</div></main>
@@ -312,7 +320,7 @@ function card(it){
     <button class="ph" data-open="${esc(it.id)}">${it.photos[0] ? `<img src="${esc(it.photos[0])}" alt="" loading="lazy">` : ""}
       ${it.status === "sold" ? '<span class="tag dark">Продано</span>' : it.status === "hidden" ? '<span class="tag dark">Архив</span>' : sale ? `<span class="tag">−${Math.round((1 - it.price / it.old_price) * 100)}%</span>` : ""}</button>
     <button class="heart" data-like="${esc(it.id)}" aria-pressed="${liked}" aria-label="В лайки">${HEART}</button>
-    <button class="cap" data-open="${esc(it.id)}"><div class="nm">${esc(it.title)}</div><div class="pr tn">${rub(it.price)}${sale ? `<s>${rub(it.old_price)}</s>` : ""}</div></button>
+    <button class="cap" data-open="${esc(it.id)}"><div class="nm">${esc(it.title)}</div><div class="pr tn">${rub(it.price)}${sale ? `<s>${rub(it.old_price)}</s>` : ""}</div>${ADMIN && it.private && it.private.cost ? `<div class="real tn">закупка ${rub(it.private.cost)}</div>` : ""}</button>
   </div>`;
 }
 function bindCards(){
@@ -328,7 +336,7 @@ const grid = list => list.length ? `<div class="grid">${list.map(card).join("")}
 const newest = list => [...list].sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")) || (b.sort || 0) - (a.sort || 0));
 
 // ---------- главная ----------
-const HERO_DEFAULT = {date:"", title:"EON", sub:"Москва · под заказ", text:"Одежда, которую мы сами отбираем у фабрик и проверяем по фото и отзывам.\n\nПривозим под заказ за 2–3 недели. Выберите вещь и размер — подтвердим наличие и срок в чате.", image:"", button:"Смотреть коллекцию"};
+const HERO_DEFAULT = {date:"", title:"EP", sub:"Москва · под заказ", text:"Одежда, которую мы сами отбираем у фабрик и проверяем по фото и отзывам.\n\nПривозим под заказ за 2–3 недели. Выберите вещь и размер — подтвердим наличие и срок в чате.", image:"hero.jpg", button:"Смотреть коллекцию"};
 VIEWS.home = () => {
   const h = {...HERO_DEFAULT, ...(SET.hero || {})};
   const items = visible(), fresh = newest(items).slice(0, 6);
@@ -417,6 +425,12 @@ VIEWS.product = id => {
     ${it.photos.length > 1 ? `<div class="dots" id="dots">${it.photos.map((_, i) => `<i class="${i ? "" : "on"}"></i>`).join("")}</div>` : ""}
     <div class="ptitle"><h1>${esc(it.title)}</h1><button class="heart" id="lk" aria-pressed="${LIKES.includes(it.id)}" aria-label="В лайки">${HEART}</button></div>
     <div class="pprice tn">${rub(it.price)}${sale ? `<s>${rub(it.old_price)}</s>` : ""}</div>
+    ${ADMIN ? `<div class="realbox"><div class="ttl">Видят только админы</div>
+      <div class="rr"><span>Реальная цена</span><b class="tn">${p.cny ? `¥${esc(p.cny)} ≈ ${rub(Math.round(p.cny * 12))}` : "не указана"}</b></div>
+      <div class="rr"><span>Под ключ с карго</span><b class="tn">${cost ? rub(cost) : "—"}</b></div>
+      <div class="rr"><span>Наценка</span><b class="tn ${mult >= 1.7 ? "good" : "bad"}">${cost ? `${profit > 0 ? "+" : ""}${rub(profit)} · ×${mult}` : "—"}</b></div>
+      ${(p.links || []).map(([n, u]) => `<button class="src" data-u="${esc(u)}">Оригинал: ${esc(n)} ↗</button>`).join("") || '<div class="note">Ссылка на оригинал не указана — добавьте в «Редактировать»</div>'}
+    </div>` : ""}
     <dl class="attrs">
       ${it.type || groupsOf.length ? `<div><dt>Категория</dt><dd>${esc(it.type || groupsOf[0])}</dd></div>` : ""}
       ${it.section ? `<div><dt>Для кого</dt><dd>${esc(it.section)}</dd></div>` : ""}
@@ -430,9 +444,7 @@ VIEWS.product = id => {
       <div class="two"><button class="btn sm" id="ed">Редактировать</button><button class="btn sm" id="arch">${it.status === "hidden" ? "Из архива" : "В архив"}</button></div>
       <div class="two" style="margin-top:8px"><button class="btn sm" id="sold">${it.status === "sold" ? "Снова в продаже" : "Продано"}</button><button class="btn sm" id="cp">Текст для Авито</button></div>
       <span class="lbl">Группы</span><div class="seg" id="igr">${GROUPS.map(g => `<button data-g="${g.id}" aria-pressed="${g.items.includes(it.id)}">${esc(g.name)}</button>`).join("") || '<span class="note">Групп нет</span>'}</div>
-      ${(p.links || []).length ? `<span class="lbl">Где заказывать</span>${p.links.map(([n, u]) => `<button class="src" data-u="${esc(u)}">${esc(n)} ↗</button>`).join("")}` : ""}
       ${p.qty ? `<span class="lbl">В заказе</span><div>${esc(p.qty)}</div>` : ""}
-      ${cost ? `<div class="money"><div><b>¥${esc(p.cny)}</b><span>закупка</span></div><div><b>${rub(cost)}</b><span>под ключ</span></div><div><b class="${mult >= 1.7 ? "good" : "bad"}">${profit > 0 ? "+" : ""}${rub(profit)}</b><span>×${mult}</span></div></div>` : ""}
       ${p.warn ? `<p class="note bad">⚠ ${esc(p.warn)}</p>` : ""}
     </div>` : ""}`;
   const gal = $("gal"), dots = $("dots");
@@ -558,7 +570,7 @@ VIEWS.checkout = () => {
 };
 VIEWS.done = id => {
   app.innerHTML = `<div class="done"><div class="big">✓</div><div class="h1" style="justify-content:center">Заявка №${esc(id)}</div>
-    <p class="note">Продавец напишет вам в чат с ботом EON: подтвердит наличие, доставку и оплату.</p>
+    <p class="note">Продавец напишет вам в чат с ботом EP: подтвердит наличие, доставку и оплату.</p>
     <div class="stack" style="margin-top:22px"><button class="btn w" id="d1">Мои заказы</button><button class="btn" id="d2">На главную</button></div></div>`;
   $("d1").onclick = () => { stack = [["home"]]; go("orders"); };
   $("d2").onclick = () => tab("home");
@@ -629,7 +641,7 @@ function orderCard(o, admin){
 }
 const PAGES = {about:"О нас", contacts:"Контакты", faq:"Вопросы"};
 const PAGE_DEFAULT = {
-  about: "EON — небольшой магазин из Москвы, нас двое.\n\nМы отбираем вещи у проверенных фабрик, смотрим реальные фото и отзывы и привозим под заказ. На сообщения отвечаем сами.",
+  about: "EP — небольшой магазин из Москвы, нас двое.\n\nМы отбираем вещи у проверенных фабрик, смотрим реальные фото и отзывы и привозим под заказ. На сообщения отвечаем сами.",
   contacts: "Пишите прямо в этот бот — ответим здесь же.\n\nМосква, отправка по всей России: СДЭК, Яндекс, Почта.",
   faq: "Сколько ждать заказ?\nОбычно 2–3 недели: доставка от фабрики до Москвы и отправка вам.\n\nНужна ли предоплата?\nДетали оплаты подтвердим в чате после заявки.\n\nКак подобрать размер?\nНапишите рост и вес в комментарии к заказу — подскажем."
 };
@@ -682,10 +694,10 @@ VIEWS.edit = id => {
     <span class="lbl">Статус</span><div class="seg" id="e_st">${Object.entries(STATUS).map(([k, v]) => `<button data-s="${k}" aria-pressed="${k === it.status}">${v}</button>`).join("")}</div>
     <label class="lbl" for="e_f">Характеристики · строка «Название: значение»</label><textarea class="f" id="e_f" placeholder="Ткань: хлопок 100%">${esc((it.facts || []).map(([k, v]) => k + ": " + v).join("\n"))}</textarea>
     <label class="lbl" for="e_d">Описание · строки с «•» станут списком</label><textarea class="f big" id="e_d">${esc(it.description)}</textarea>
-    <div class="adm"><div class="ttl">Только для админов</div>
-      <label class="lbl" for="e_l">Поставщик · строка «Название | ссылка»</label><textarea class="f" id="e_l" placeholder="Pinduoduo | https://…">${esc((p.links || []).map(([n, u]) => n + " | " + u).join("\n"))}</textarea>
+    <div class="adm"><div class="ttl">Только для админов · клиенты это не видят</div>
+      <label class="lbl" for="e_l">Ссылка на оригинал · строка «Название | ссылка»</label><textarea class="f" id="e_l" placeholder="Pinduoduo | https://…">${esc((p.links || []).map(([n, u]) => n + " | " + u).join("\n"))}</textarea>
       <label class="lbl" for="e_q">В заказе</label><input class="f" id="e_q" value="${esc(p.qty || "")}" placeholder="3 шт: 1M 2L">
-      <div class="two"><div><label class="lbl" for="e_c">Закупка, ¥</label><input class="f tn" id="e_c" type="number" inputmode="decimal" value="${p.cny ?? ""}"></div>
+      <div class="two"><div><label class="lbl" for="e_c">Реальная цена, ¥</label><input class="f tn" id="e_c" type="number" inputmode="decimal" value="${p.cny ?? ""}"></div>
         <div><label class="lbl" for="e_k">Вес, кг</label><input class="f tn" id="e_k" type="number" inputmode="decimal" step="0.1" value="${p.kg ?? ""}"></div></div>
       <p class="note" id="e_cost"></p>
       <label class="lbl" for="e_w">Заметка</label><input class="f" id="e_w" value="${esc(p.warn || "")}">
@@ -798,7 +810,7 @@ VIEWS.group = gid => {
 VIEWS.hero = () => {
   const h = {...HERO_DEFAULT, ...(SET.hero || {})};
   app.innerHTML = `<button class="back" id="bk">← Назад</button><div class="h1">Блок дропа</div>
-    <span class="lbl">Фоновое фото · если пусто, берётся первая вещь</span><div class="pgrid" id="hp"></div>
+    <span class="lbl">Фоновое фото · если пусто, стоит фото по умолчанию</span><div class="pgrid" id="hp"></div>
     <label class="lbl" for="h_d">Дата или подпись сверху</label><input class="f" id="h_d" value="${esc(h.date)}" placeholder="13.10.2026">
     <label class="lbl" for="h_t">Заголовок</label><input class="f" id="h_t" value="${esc(h.title)}">
     <label class="lbl" for="h_s">Подзаголовок</label><input class="f" id="h_s" value="${esc(h.sub)}">
@@ -810,7 +822,7 @@ VIEWS.hero = () => {
   drawImg();
   $("file").value = ""; $("file").onchange = async e => { const f = e.target.files[0]; if (!f) return; toast("Загружаю фото…"); try { h.image = (await call("upload", {data: await shrink(f)})).url; drawImg(); toast("Фото загружено"); } catch(err) { toast(err.message); } };
   const doSave = async () => {
-    Object.assign(h, {date: $("h_d").value.trim(), title: $("h_t").value.trim() || "EON", sub: $("h_s").value.trim(), text: $("h_x").value, button: $("h_b").value.trim()});
+    Object.assign(h, {date: $("h_d").value.trim(), title: $("h_t").value.trim() || "EP", sub: $("h_s").value.trim(), text: $("h_x").value, button: $("h_b").value.trim()});
     try { await call("settings_save", {key: "hero", value: h}); SET.hero = h; haptic(); toast("Сохранено"); tab("home"); } catch(e) { toast(e.message); }
   };
   $("h_save").onclick = doSave; setMain("Сохранить", doSave);
