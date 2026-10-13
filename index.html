@@ -249,7 +249,18 @@ function toast(t){ const el = $("toast"); el.textContent = t; el.hidden = false;
 const HEART = '<svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>';
 const STATUS = {active:"В продаже", sold:"Продано", hidden:"В архиве"};
 const OST = {new:"Новый", work:"В работе", sent:"Отправлен", done:"Завершён", cancel:"Отменён"};
-const visible = () => ITEMS.filter(it => it.status !== "hidden");
+// порядок по цвету: от тёмного к светлому, пастель в конце. Цвет берём из характеристики «Цвет», иначе из названия
+const COLOR_STEPS = [["камуф", 9], ["чёрн", 0], ["черн", 0], ["тёмно-син", 1], ["темно-син", 1], ["navy", 1], ["бордо", 2], ["винн", 2], ["тёмно-корич", 3], ["графит", 4], ["светло-сер", 5], ["сер", 4],
+  ["олив", 10], ["хаки", 10], ["зел", 11], ["шоколад", 12], ["корич", 12], ["кофе", 13], ["беж", 14], ["песоч", 14], ["крем", 15], ["молоч", 15], ["бел", 16], ["голуб", 17], ["лаванд", 18], ["роз", 19]];
+const COLOR_FIX = {"EON-03": "кремовый", "EON-04": "голубой", "EON-07": "чёрный", "EON-20": "серый", "EON-23": "чёрный"};
+function colorRank(it){
+  const fact = (it.facts || []).find(([k]) => /^цвет/i.test(k));
+  const src = (COLOR_FIX[it.id] || (fact && !/уточн/.test(fact[1]) ? fact[1] : "") || it.title).toLowerCase();
+  const hit = COLOR_STEPS.find(([w]) => src.includes(w));
+  return hit ? hit[1] : 8;
+}
+const byColor = list => [...list].sort((a, b) => colorRank(a) - colorRank(b) || (a.sort || 0) - (b.sort || 0));
+const visible = () => byColor(ITEMS.filter(it => it.status !== "hidden"));
 const byId = id => ITEMS.find(x => x.id === id);
 const sizesOf = it => (it.sizes || "").split(/[\s,\/]+/).filter(s => /^(X{0,3}S|M|X{0,3}L|\d{2,3})$/i.test(s));
 
@@ -333,7 +344,7 @@ function toggleLike(id){
   saveLikes();
 }
 const grid = list => list.length ? `<div class="grid">${list.map(card).join("")}</div>` : `<div class="empty">Пока пусто</div>`;
-const newest = list => [...list].sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")) || (b.sort || 0) - (a.sort || 0));
+const newest = list => [...list].sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")) || colorRank(a) - colorRank(b));
 
 // ---------- главная ----------
 const HERO_DEFAULT = {date:"", title:"EP", sub:"Москва · под заказ", text:"Одежда, которую мы сами отбираем у фабрик и проверяем по фото и отзывам.\n\nПривозим под заказ за 2–3 недели. Выберите вещь и размер — подтвердим наличие и срок в чате.", image:"hero.jpg", button:"Смотреть коллекцию"};
@@ -363,7 +374,7 @@ VIEWS.catalog = (o = {}) => {
   const st = stack[stack.length - 1]; st[1] = o = {grp:"all", size:"", sort:"", sale:false, q:"", ...o};
   const base = o.grp === "arch" ? ITEMS.filter(it => it.status === "hidden") : visible();
   const groups = GROUPS.filter(g => ADMIN || base.some(it => g.items.includes(it.id)));
-  let list = base.filter(it => o.grp === "all" || o.grp === "arch" || (GROUPS.find(g => String(g.id) === o.grp) || {items:[]}).items.includes(it.id));
+  let list = byColor(base).filter(it => o.grp === "all" || o.grp === "arch" || (GROUPS.find(g => String(g.id) === o.grp) || {items:[]}).items.includes(it.id));
   const rank = s => SIZE_ORDER.includes(s) ? SIZE_ORDER.indexOf(s) : 100 + parseInt(s, 10);
   const allSizes = [...new Set(list.flatMap(sizesOf).map(s => s.toUpperCase()))].sort((a, b) => rank(a) - rank(b));
   if (o.size) list = list.filter(it => sizesOf(it).map(s => s.toUpperCase()).includes(o.size));
@@ -384,6 +395,7 @@ VIEWS.catalog = (o = {}) => {
     <div class="chips">
       <button class="chip" id="fprice" aria-pressed="${o.sort === "asc" || o.sort === "desc"}">Цена ${o.sort === "desc" ? "↓" : o.sort === "asc" ? "↑" : ""}</button>
       <button class="chip" id="fnew" aria-pressed="${o.sort === "new"}">Новинки</button>
+      <button class="chip" id="fcol" aria-pressed="${!o.sort}">По цвету</button>
       <button class="chip" id="fsale" aria-pressed="${o.sale}">% Sale</button>
     </div>
     <div style="height:14px"></div>${grid(list)}`;
@@ -394,6 +406,7 @@ VIEWS.catalog = (o = {}) => {
   $("fprice").onclick = () => upd({sort: o.sort === "asc" ? "desc" : o.sort === "desc" ? "" : "asc"});
   $("fnew").onclick = () => upd({sort: o.sort === "new" ? "" : "new"});
   $("fsale").onclick = () => upd({sale: !o.sale});
+  $("fcol").onclick = () => upd({sort: ""});
   if ($("q")) {
     const q = $("q");
     q.oninput = () => { o.q = q.value.trim().toLowerCase(); const pos = q.selectionStart; render.keep = true; render(); const n = $("q"); n.focus(); n.setSelectionRange(pos, pos); };
