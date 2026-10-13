@@ -6,136 +6,220 @@
 <title>EON</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@300;400;500;600;700&display=swap">
 <style>
-/* Клиент: лента → карточка → заказ. Админ: то же + редактор, заказы, импорт. Цвета и кнопки — из Telegram */
+/* EON: тёмный монохромный магазин. Шапка (меню · EON · корзина) → экраны → нижняя панель Главная / Match / Лайки */
 :root{
-  --bg:var(--tg-theme-bg-color,#ffffff);
-  --bg2:var(--tg-theme-secondary-bg-color,#f1f2f4);
-  --ink:var(--tg-theme-text-color,#141518);
-  --muted:var(--tg-theme-hint-color,#80858d);
-  --link:var(--tg-theme-link-color,#2481cc);
-  --btn:var(--tg-theme-button-color,#2481cc);
-  --btn-ink:var(--tg-theme-button-text-color,#ffffff);
-  --danger:var(--tg-theme-destructive-text-color,#d64545);
-  --line:color-mix(in srgb,var(--ink) 12%,transparent);
-  --ok:#2f9e5a; --warn:#d9822b;
+  --bg:#0b0b0c; --card:#151517; --card2:#1d1d20; --fg:#f3f2ef; --muted:#8d8c88; --line:#2a2a2d;
+  --inv:#f3f2ef; --inv-fg:#0b0b0c; --danger:#ff5a4f; --ok:#5cc28a;
   --font:"Onest",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --top:52px; --bar:58px;
+  color-scheme:dark;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.45}
-button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
-.wrap{padding:12px 14px 110px;max-width:900px;margin:0 auto}
-.top{position:sticky;top:0;z-index:5;background:var(--bg);padding:10px 14px 0;border-bottom:1px solid var(--line)}
-.top .row{display:flex;gap:10px;align-items:center;max-width:900px;margin:0 auto}
-.brand{font-weight:800;font-size:20px;letter-spacing:-.02em}
-.search{flex:1;min-width:0;background:var(--bg2);border:0;border-radius:12px;padding:9px 12px;font:inherit;color:var(--ink);outline:none}
-.iconbtn{flex:none;width:38px;height:38px;border-radius:12px;background:var(--btn);color:var(--btn-ink);font-size:22px;line-height:1}
-.tabs{display:flex;gap:18px;max-width:900px;margin:8px auto 0}
-.tabs button{padding:6px 0 9px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent}
-.tabs button[aria-pressed="true"]{color:var(--ink);border-color:var(--btn)}
-.tabs .badge{display:inline-block;min-width:18px;padding:0 5px;border-radius:9px;background:var(--danger);color:#fff;font-size:11px;line-height:18px;text-align:center;margin-left:4px}
-.chips{display:flex;gap:8px;overflow-x:auto;padding:10px 0 0;scrollbar-width:none;max-width:900px;margin:0 auto}
-.chips::-webkit-scrollbar{display:none}
-.chips.sub .chip{font-size:13px;padding:5px 12px}
-.chip{flex:none;background:var(--bg2);border-radius:999px;padding:7px 14px;font-size:14px;font-weight:500}
-.chip[aria-pressed="true"]{background:var(--btn);color:var(--btn-ink)}
-.chipsbox{padding-bottom:10px}
-.count{color:var(--muted);font-size:13px;margin:4px 0 10px}
-.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 10px}
-@media(min-width:620px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
-.ad{display:flex;flex-direction:column;gap:4px;text-align:left;min-width:0}
-.ad .ph{position:relative;aspect-ratio:1/1;border-radius:12px;overflow:hidden;background:var(--bg2)}
-.ad img{width:100%;height:100%;object-fit:cover;display:block}
-.ad .p{font-weight:700;font-size:16px;font-variant-numeric:tabular-nums}
-.ad .t{font-size:14px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.ad .m{font-size:12px;color:var(--muted)}
-.st{position:absolute;left:8px;top:8px;font-size:11px;font-weight:700;border-radius:6px;padding:2px 7px;color:#fff;background:#0009}
-.st.sold{background:var(--ok)}
-/* карточка */
-.gal{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -14px;scrollbar-width:none}
-.gal::-webkit-scrollbar{display:none}
-.gal img{flex:none;width:100%;aspect-ratio:1/1;object-fit:cover;scroll-snap-align:center;background:var(--bg2)}
-.dots{display:flex;justify-content:center;gap:5px;margin:8px 0 2px}
-.dots i{width:6px;height:6px;border-radius:50%;background:var(--line)}
-.dots i.on{background:var(--ink)}
-h1{font-size:21px;line-height:1.25;margin:10px 0 4px;font-weight:700;text-wrap:balance}
-.price{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums}
-.meta{color:var(--muted);font-size:13px}
-.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0}
-.btn{border-radius:12px;padding:12px;font-weight:600;text-align:center;background:var(--bg2)}
-.btn.pri{background:var(--btn);color:var(--btn-ink)}
-.btn.del{color:var(--danger)}
-.btn[disabled]{opacity:.5}
-.h{font-size:17px;font-weight:700;margin:20px 0 8px}
-.facts{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:7px 16px;margin:0}
-.facts dt{color:var(--muted)}.facts dd{margin:0}
-.desc{white-space:pre-line;margin:0}
-.box{background:var(--bg2);border-radius:14px;padding:12px 14px;margin-top:18px;display:flex;flex-direction:column;gap:12px}
-.box .bt{font-weight:700}
-.lbl{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:4px}
-.money{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
-.money div{background:var(--bg);border-radius:10px;padding:8px}
-.money b{display:block;font-size:16px;font-variant-numeric:tabular-nums}
-.money span{font-size:11px;color:var(--muted)}
-.good{color:var(--ok)}.bad{color:var(--warn)}
-.src{display:block;background:var(--bg);border-radius:10px;padding:10px 12px;color:var(--link);font-weight:600;text-align:left;width:100%;margin-top:6px}
-.f{width:100%;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:9px 11px;font:inherit}
-textarea.f{min-height:110px;resize:vertical}
-textarea.f.big{min-height:220px}
-.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.note{font-size:13px;color:var(--muted)}
-.warn{color:var(--warn);font-size:13px}
-.seg{display:flex;gap:6px;flex-wrap:wrap}
-.seg button{background:var(--bg);border-radius:10px;padding:8px 12px;font-size:14px}
-.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
-/* редактор фото */
-.pgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
-.pcell{position:relative;aspect-ratio:1/1;border-radius:10px;overflow:hidden;background:var(--bg)}
-.pcell img{width:100%;height:100%;object-fit:cover;display:block}
-.pcell .x,.pcell .l{position:absolute;top:4px;width:24px;height:24px;border-radius:50%;background:#000a;color:#fff;font-size:14px;line-height:24px}
-.pcell .x{right:4px}.pcell .l{left:4px}
-.pcell.first::after{content:"обложка";position:absolute;left:0;right:0;bottom:0;font-size:10px;text-align:center;background:#000a;color:#fff;padding:2px}
-.padd{display:flex;align-items:center;justify-content:center;aspect-ratio:1/1;border-radius:10px;border:1.5px dashed var(--line);color:var(--muted);font-size:26px;cursor:pointer}
-/* заказ */
-.sizes{display:flex;gap:8px;flex-wrap:wrap}
-.sizes button{min-width:48px;background:var(--bg2);border-radius:10px;padding:9px 12px;font-weight:600}
-.sizes button[aria-pressed="true"]{background:var(--btn);color:var(--btn-ink)}
-.done{text-align:center;padding:40px 10px}
-.done .big{font-size:44px}
-/* заказы */
-.ord{display:grid;grid-template-columns:64px minmax(0,1fr);gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}
-.ord img{width:64px;height:64px;border-radius:10px;object-fit:cover;background:var(--bg2)}
-.ord .t{font-weight:600}
-.ord .row{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
-.ord .row button{background:var(--bg2);border-radius:9px;padding:6px 10px;font-size:13px;font-weight:600}
-.ord.new .t::before{content:"● ";color:var(--danger)}
-/* группы */
-.glist{display:flex;flex-direction:column;margin-top:10px}
-.grow{display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--line)}
-.gname{flex:1;min-width:0;display:flex;flex-direction:column;text-align:left;padding:8px 0}
-.gico{flex:none;min-width:36px;height:36px;border-radius:10px;background:var(--bg2);font-size:15px}
-span.gico{background:none}
-.gico.del{color:var(--danger)}.gico.wide{padding:0 10px;font-size:13px;font-weight:600}
-.gsel{display:flex;flex-direction:column}
-.gitem{display:grid;grid-template-columns:24px 52px minmax(0,1fr);gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer}
-.gitem input{width:22px;height:22px;accent-color:var(--btn);margin:0}
-.gitem img{width:52px;height:52px;border-radius:9px;object-fit:cover;background:var(--bg2)}
-.gitem .t{display:block;font-size:14px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.gitem .note{display:block;font-size:12px}
-.chip#gman{background:none;border:1px dashed var(--line);color:var(--muted)}
-.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;z-index:20;max-width:90vw;text-align:center}
-.spin{padding:60px 0;text-align:center;color:var(--muted)}
+html,body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font);font-size:14px;line-height:1.5}
+button,input,textarea,select{font:inherit;color:inherit}
+button{border:0;background:none;cursor:pointer;padding:0}
+img{display:block;max-width:100%}
+.up{text-transform:uppercase;letter-spacing:.14em}
+.mut{color:var(--muted)}
+.tn{font-variant-numeric:tabular-nums}
 [hidden]{display:none!important}
+
+/* шапка */
+.top{position:fixed;top:0;left:0;right:0;height:calc(var(--top) + env(safe-area-inset-top,0px));padding:env(safe-area-inset-top,0px) 10px 0;display:flex;align-items:center;justify-content:space-between;z-index:30;background:linear-gradient(var(--bg) 60%,transparent)}
+.top .logo{position:absolute;left:50%;transform:translateX(-50%);font-weight:600;font-size:15px;letter-spacing:.42em;padding-left:.42em}
+.ib{width:40px;height:40px;display:grid;place-items:center;position:relative}
+.ib svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.5}
+.badge{position:absolute;top:4px;right:2px;min-width:16px;height:16px;border-radius:8px;background:var(--inv);color:var(--inv-fg);font-size:10px;font-weight:700;line-height:16px;text-align:center;padding:0 4px}
+.badge.red{background:var(--danger);color:#fff}
+main{padding:calc(var(--top) + env(safe-area-inset-top,0px)) 12px calc(var(--bar) + 24px + env(safe-area-inset-bottom,0px));max-width:760px;margin:0 auto;min-height:100vh}
+
+/* нижняя панель */
+.bar{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;justify-content:space-around;background:rgba(11,11,12,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid var(--line);padding:6px 0 calc(6px + env(safe-area-inset-bottom,0px))}
+.bar button{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);min-width:80px}
+.bar button svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.5}
+.bar button[aria-current="true"]{color:var(--fg)}
+
+/* общие элементы */
+.back{display:inline-flex;gap:8px;align-items:center;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);padding:10px 0 14px}
+.h1{font-size:26px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;margin:4px 0 14px;display:flex;align-items:baseline;gap:12px;line-height:1.15}
+.h1 small{font-size:11px;font-weight:400;color:var(--muted);letter-spacing:.14em}
+.h2{font-size:13px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;margin:26px 0 12px;display:flex;justify-content:space-between;align-items:center}
+.h2 button{font-size:11px;font-weight:500;color:var(--muted);letter-spacing:.14em}
+.btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:50px;padding:0 16px;font-size:12px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;border:1px solid var(--line);background:transparent}
+.btn.w{background:var(--inv);color:var(--inv-fg);border-color:var(--inv)}
+.btn[disabled]{opacity:.45;cursor:default}
+.btn.sm{min-height:38px;font-size:11px;width:auto}
+.btn.del{color:var(--danger)}
+.stack{display:flex;flex-direction:column;gap:10px}
+.chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;border:1px solid var(--line);padding:8px 14px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;white-space:nowrap}
+.chip[aria-pressed="true"]{background:var(--inv);color:var(--inv-fg);border-color:var(--inv)}
+.lbl{display:block;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin:14px 0 6px}
+.f{width:100%;background:var(--card);border:1px solid var(--line);padding:13px 14px;outline:none;border-radius:0}
+.f:focus{border-color:var(--muted)}
+.f::placeholder{color:#5f5e5b;text-transform:uppercase;letter-spacing:.1em;font-size:12px}
+textarea.f{min-height:96px;resize:vertical}
+textarea.f.big{min-height:220px}
+.note{font-size:12px;color:var(--muted)}
+.empty{padding:60px 0;text-align:center;color:var(--muted);font-size:12px;letter-spacing:.14em;text-transform:uppercase}
+
+/* главная: блок дропа */
+.hero{position:relative;margin:0 -12px;min-height:70vh;display:flex;background:#111 center/cover no-repeat}
+.hero::before{content:"";position:absolute;inset:0;background:linear-gradient(rgba(0,0,0,.35),rgba(0,0,0,.72) 55%,var(--bg))}
+.hero .frame{position:relative;margin:10px 12px 18px;border:1px solid rgba(255,255,255,.28);padding:22px 16px 18px;display:flex;flex-direction:column;flex:1}
+.hero .date{font-size:11px;letter-spacing:.16em}
+.hero .t{font-size:30px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;line-height:1.1;margin:8px 0 4px;text-wrap:balance}
+.hero .s{font-size:16px;font-weight:300;letter-spacing:.32em;text-transform:uppercase;color:#cfcdc8;margin-bottom:18px}
+.hero .txt{white-space:pre-line;color:#e4e2dd;font-size:14px;max-width:60ch}
+.hero .go{margin-top:auto;align-self:flex-end;padding-top:22px;font-size:12px;letter-spacing:.18em;text-transform:uppercase;display:flex;gap:12px;align-items:center}
+
+/* сетка товаров */
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media(min-width:620px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.pc{position:relative;display:flex;flex-direction:column;text-align:left;background:var(--card);min-width:0}
+.pc .ph{position:relative;aspect-ratio:1/1;background:#fff;overflow:hidden}
+.pc .ph img{width:100%;height:100%;object-fit:cover}
+.pc .cap{padding:9px 10px 11px;text-align:left}
+.pc .nm{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pc .pr{font-size:12px;margin-top:3px}
+.pc .pr s{color:var(--muted);margin-left:6px;font-size:11px}
+.heart{position:absolute;top:6px;right:6px;width:30px;height:30px;display:grid;place-items:center;background:rgba(0,0,0,.42);z-index:2}
+.heart svg{width:16px;height:16px;stroke:#fff;fill:none;stroke-width:1.6}
+.heart[aria-pressed="true"] svg{fill:#fff}
+.tag{position:absolute;left:6px;top:6px;background:var(--inv);color:var(--inv-fg);font-size:9.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;padding:3px 6px;z-index:2}
+.tag.dark{background:rgba(0,0,0,.65);color:#fff}
+
+/* карточка товара */
+.gal{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;background:#fff}
+.gal::-webkit-scrollbar{display:none}
+.gal img{flex:none;width:100%;aspect-ratio:1/1;object-fit:cover;scroll-snap-align:center}
+.dots{display:flex;justify-content:center;gap:6px;margin:10px 0 0}
+.dots i{width:5px;height:5px;background:var(--line)}
+.dots i.on{background:var(--fg)}
+.ptitle{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-top:16px}
+.ptitle h1{font-size:17px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;margin:0;line-height:1.3;text-wrap:balance}
+.ptitle .heart{position:static;background:none;width:34px;height:34px;flex:none}
+.ptitle .heart svg{width:22px;height:22px}
+.pprice{font-size:20px;margin:10px 0 16px}
+.pprice s{color:var(--muted);font-size:14px;margin-left:10px}
+.attrs{border-top:1px solid var(--line);margin:0}
+.attrs div{display:flex;justify-content:space-between;gap:16px;padding:11px 0;border-bottom:1px solid var(--line);font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+.attrs dt{color:var(--muted)}
+.attrs dd{margin:0;text-align:right}
+.desc{margin:16px 0;color:#d9d7d2}
+.desc p{margin:0 0 10px}
+.desc ul{margin:0 0 10px;padding-left:18px}
+.desc li{margin:3px 0}
+.sizes{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.sizes button{min-width:46px;height:40px;padding:0 12px;border:1px solid var(--line);font-size:12px;letter-spacing:.1em}
+.sizes button[aria-pressed="true"]{background:var(--inv);color:var(--inv-fg);border-color:var(--inv)}
+
+/* панели: корзина и меню */
+.veil{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:40;opacity:0;pointer-events:none;transition:opacity .2s}
+.veil.on{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;bottom:0;z-index:41;width:min(88vw,420px);background:var(--card);display:flex;flex-direction:column;transition:transform .25s ease;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+.drawer.r{right:0;transform:translateX(100%)}
+.drawer.l{left:0;transform:translateX(-100%)}
+.drawer.on{transform:none}
+.dh{display:flex;justify-content:space-between;align-items:center;padding:12px 14px 12px 18px;font-size:13px;font-weight:600;letter-spacing:.18em;text-transform:uppercase}
+.dh small{font-weight:400;color:var(--muted);margin-left:10px;letter-spacing:.12em}
+.db{flex:1;overflow-y:auto;padding:0 18px}
+.df{padding:14px 18px 18px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
+.menu button.mi{display:flex;justify-content:space-between;align-items:center;width:100%;padding:14px 0;font-size:12px;letter-spacing:.16em;text-transform:uppercase;text-align:left;border-bottom:1px solid var(--line)}
+.menu .sub button.mi{padding-left:14px;color:#cfcdc8;font-size:11px}
+.menu .sect{margin-top:22px;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+.cl{display:grid;grid-template-columns:62px minmax(0,1fr) auto;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);align-items:start}
+.cl img{width:62px;height:62px;object-fit:cover;background:#fff}
+.cl .nm{font-size:11px;letter-spacing:.12em;text-transform:uppercase;line-height:1.35}
+.qty{display:flex;align-items:center;border:1px solid var(--line);height:28px}
+.qty button{width:26px;height:26px}
+.qty span{min-width:20px;text-align:center;font-size:12px}
+.rm{color:var(--muted);font-size:16px;width:28px;height:28px;margin-top:6px}
+.tot{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;letter-spacing:.14em;text-transform:uppercase}
+.tot b{font-size:17px;letter-spacing:0;font-weight:500}
+
+/* оформление */
+.ol{display:flex;justify-content:space-between;gap:12px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:9px 0;border-bottom:1px solid var(--line)}
+.seg{display:flex;gap:8px;flex-wrap:wrap}
+.seg button{border:1px solid var(--line);padding:10px 14px;font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+.seg button[aria-pressed="true"]{background:var(--inv);color:var(--inv-fg);border-color:var(--inv)}
+.done{text-align:center;padding:60px 10px}
+.done .big{font-size:40px;font-weight:300}
+
+/* match */
+.mwrap{position:relative;height:calc(100vh - var(--top) - var(--bar) - 130px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));min-height:360px;margin-top:6px}
+.mcard{position:absolute;inset:0;background:var(--card);display:flex;flex-direction:column;touch-action:pan-y;user-select:none;transition:transform .25s ease,opacity .25s}
+.mcard .ph{flex:1;min-height:0;background:#fff;overflow:hidden}
+.mcard .ph img{width:100%;height:100%;object-fit:cover;pointer-events:none}
+.mcard .cap{display:flex;justify-content:space-between;gap:12px;padding:12px 12px 14px;font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+.mcard .stamp{position:absolute;top:20px;padding:6px 12px;border:2px solid;font-weight:700;letter-spacing:.16em;font-size:13px;opacity:0;text-transform:uppercase;background:rgba(0,0,0,.4)}
+.mcard .stamp.like{left:16px;color:var(--ok);transform:rotate(-12deg)}
+.mcard .stamp.nope{right:16px;color:var(--danger);transform:rotate(12deg)}
+.mbtns{display:flex;justify-content:center;gap:22px;margin-top:16px}
+.mbtns button{width:58px;height:58px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line)}
+.mbtns button.y{background:var(--inv);color:var(--inv-fg);border-color:var(--inv)}
+.mbtns svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.7}
+
+/* заказы */
+.ord{border:1px solid var(--line);padding:12px;margin-bottom:10px}
+.ord .hd{display:flex;justify-content:space-between;gap:10px;font-size:11px;letter-spacing:.14em;text-transform:uppercase}
+.ord .st{padding:2px 8px;border:1px solid var(--line);font-size:10px;white-space:nowrap}
+.ord .st.new{border-color:var(--danger);color:var(--danger)}
+.ord .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.ord .ln{display:flex;gap:10px;align-items:center;margin-top:10px;font-size:12px}
+.ord .ln img{width:42px;height:42px;object-fit:cover;background:#fff;flex:none}
+.ord .ct{margin-top:10px;font-size:12px;color:#d9d7d2;white-space:pre-line}
+
+/* админ */
+.adm{border:1px dashed var(--line);padding:12px;margin-top:22px}
+.adm .ttl{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.money{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:10px}
+.money div{background:var(--card2);padding:8px}
+.money b{display:block;font-size:14px;font-weight:500}
+.money span{font-size:10px;color:var(--muted)}
+.good{color:var(--ok)}.bad{color:#e8a13a}
+.src{display:block;width:100%;text-align:left;padding:10px 0;border-bottom:1px solid var(--line);font-size:12px;color:#9cc4ff}
+.pgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.pcell{position:relative;aspect-ratio:1/1;background:#fff;overflow:hidden}
+.pcell img{width:100%;height:100%;object-fit:cover}
+.pcell button{position:absolute;top:3px;width:24px;height:24px;background:rgba(0,0,0,.7);color:#fff;font-size:13px}
+.pcell .x{right:3px}.pcell .l{left:3px}
+.pcell.first::after{content:"обложка";position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);color:#fff;font-size:9px;text-align:center;letter-spacing:.1em;padding:2px}
+.padd{display:grid;place-items:center;aspect-ratio:1/1;border:1px dashed var(--line);color:var(--muted);font-size:24px;cursor:pointer}
+.grow{display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--line)}
+.grow .gname{flex:1;min-width:0;text-align:left;padding:12px 0;display:flex;flex-direction:column;font-size:12px;letter-spacing:.12em;text-transform:uppercase}
+.grow .gname span{font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:none}
+.gico{width:36px;height:36px;border:1px solid var(--line);flex:none}
+.gico.del{color:var(--danger)}.gico.wide{width:auto;padding:0 10px;font-size:11px}
+.gitem{display:grid;grid-template-columns:22px 48px minmax(0,1fr);gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.gitem input{width:20px;height:20px;accent-color:#f3f2ef;margin:0}
+.gitem img{width:48px;height:48px;object-fit:cover;background:#fff}
+.gitem .t{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gitem .note{display:block}
+.toast{position:fixed;left:50%;bottom:calc(var(--bar) + 18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--inv);color:var(--inv-fg);padding:10px 16px;font-size:12px;letter-spacing:.08em;z-index:60;max-width:90vw;text-align:center}
+.spin{padding:80px 0;text-align:center;color:var(--muted);font-size:11px;letter-spacing:.16em;text-transform:uppercase}
+.search{margin-bottom:4px}
 </style>
 </head>
 <body>
-<header class="top" id="top">
-  <div class="row"><div class="brand">EON</div><input class="search" id="q" type="search" placeholder="Поиск"><button class="iconbtn" id="add" hidden aria-label="Добавить товар">+</button></div>
-  <div class="tabs" id="tabs" hidden><button data-t="items" aria-pressed="true">Товары</button><button data-t="orders" aria-pressed="false">Заказы<span class="badge" id="nb" hidden></span></button></div>
-  <div class="chipsbox" id="chipsbox"><div class="chips" id="secs"></div><div class="chips sub" id="types"></div></div>
+<header class="top">
+  <button class="ib" id="bMenu" aria-label="Меню"><svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg><span class="badge red" id="bMenuN" hidden></span></button>
+  <div class="logo">EON</div>
+  <button class="ib" id="bCart" aria-label="Корзина"><svg viewBox="0 0 24 24"><path d="M3 4h2l2.2 11h11.3L21 7H7"/><circle cx="9" cy="19.5" r="1.3"/><circle cx="17" cy="19.5" r="1.3"/></svg><span class="badge" id="bCartN" hidden></span></button>
 </header>
-<main class="wrap" id="app"><div class="spin">Загрузка…</div></main>
+<main id="app"><div class="spin">Загрузка</div></main>
+<nav class="bar" id="bar">
+  <button data-tab="home" aria-current="true"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9h-5v-6H9v6H4z"/></svg>Главная</button>
+  <button data-tab="match"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="11" height="15" rx="1"/><path d="M19 7v13H9"/></svg>Match</button>
+  <button data-tab="likes"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>Лайки</button>
+</nav>
+<div class="veil" id="veil"></div>
+<aside class="drawer l" id="menu" aria-label="Меню"></aside>
+<aside class="drawer r" id="cart" aria-label="Корзина"></aside>
 <input type="file" id="file" accept="image/*" multiple hidden>
 <div class="toast" id="toast" hidden></div>
 <script src="config.js"></script>
@@ -143,16 +227,23 @@ span.gico{background:none}
 const tg = window.Telegram && window.Telegram.WebApp;
 const API = window.EON_API || "";
 const app = document.getElementById("app");
-let ITEMS = [], GROUPS = [], ORDERS = [], ADMIN = false, USER = null;
-let grp = "all", query = "", tab = "items", current = null, view = "feed";
-
-const rub = n => Number(n || 0).toLocaleString("ru-RU") + " ₽";
-const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const haptic = t => { try { tg && tg.HapticFeedback && tg.HapticFeedback.notificationOccurred(t || "success"); } catch(_) {} };
 const $ = id => document.getElementById(id);
+let ITEMS = [], GROUPS = [], SET = {}, ORDERS = [], ADMIN = false, USER = null;
+let CART = [], LIKES = [], SEEN = [], CONTACT = {};
+let stack = [], drawer = null;
+
+// ---------- утилиты ----------
+const rub = n => Number(n || 0).toLocaleString("ru-RU") + " ₽";
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const haptic = t => { try { tg && tg.HapticFeedback && (t === "light" ? tg.HapticFeedback.impactOccurred("light") : tg.HapticFeedback.notificationOccurred(t || "success")); } catch(_) {} };
+const plural = (n, a, b, c) => { const m = n % 10, h = n % 100; return m === 1 && h !== 11 ? a : m >= 2 && m <= 4 && (h < 12 || h > 14) ? b : c; };
 function toast(t){ const el = $("toast"); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => el.hidden = true, 2200); }
+const HEART = '<svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>';
 const STATUS = {active:"В продаже", sold:"Продано", hidden:"В архиве"};
-const SECTIONS = ["Женское", "Мужское", "Унисекс"];
+const OST = {new:"Новый", work:"В работе", sent:"Отправлен", done:"Завершён", cancel:"Отменён"};
+const visible = () => ITEMS.filter(it => it.status !== "hidden");
+const byId = id => ITEMS.find(x => x.id === id);
+const sizesOf = it => (it.sizes || "").split(/[\s,\/]+/).filter(s => /^(X{0,3}S|M|X{0,3}L|\d{2,3})$/i.test(s));
 
 async function call(action, data){
   if (!API) throw new Error("Сервер не подключён");
@@ -161,297 +252,581 @@ async function call(action, data){
   if (j.error) throw new Error(j.error);
   return j;
 }
+// корзина, лайки и контакты — в облаке Telegram (видны на всех устройствах клиента), запасной вариант — браузер
+const store = {
+  cloud: () => tg && tg.CloudStorage && tg.isVersionAtLeast && tg.isVersionAtLeast("6.9"),
+  get(k){ return new Promise(ok => {
+    const local = () => { try { ok(JSON.parse(localStorage.getItem(k) || "null")); } catch(_) { ok(null); } };
+    if (store.cloud()) tg.CloudStorage.getItem(k, (e, v) => { if (e || !v) return local(); try { ok(JSON.parse(v)); } catch(_) { local(); } }); else local();
+  }); },
+  set(k, v){ const s = JSON.stringify(v); try { localStorage.setItem(k, s); } catch(_) {} if (store.cloud()) try { tg.CloudStorage.setItem(k, s); } catch(_) {} }
+};
+const saveCart = () => { store.set("eon_cart", CART); badges(); };
+const saveLikes = () => store.set("eon_likes", LIKES);
 async function copy(text){
   try { await navigator.clipboard.writeText(text); }
   catch(_) { const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); } catch(e) {} ta.remove(); }
   haptic(); toast("Скопировано");
 }
-const adText = it => `${it.title}\n\n${it.description}\n\nЦена: ${rub(it.price)}`;
+
+// ---------- навигация: стек экранов, системная кнопка «Назад» Telegram ----------
+function go(view, arg, replace){
+  if (replace) stack.pop();
+  stack.push([view, arg]); render();
+}
+function back(){
+  if (drawer) return closeDrawer();
+  if (stack.length > 1) { stack.pop(); render(); }
+}
+function tab(t){ stack = [[t]]; render(); }
 function setMain(text, fn){
   if (!tg) return;
-  tg.MainButton.offClick(setMain.fn || (() => {}));
+  if (setMain.fn) tg.MainButton.offClick(setMain.fn);
+  setMain.fn = null;
   if (!text) { tg.MainButton.hide(); return; }
-  setMain.fn = fn; tg.MainButton.setParams({text, is_visible:true, is_active:true}); tg.MainButton.onClick(fn);
+  setMain.fn = fn; tg.MainButton.setParams({text, is_visible:true, is_active:true, color:"#f3f2ef", text_color:"#0b0b0c"}); tg.MainButton.onClick(fn);
 }
-function back(on){ if (tg) on ? tg.BackButton.show() : tg.BackButton.hide(); }
-function header(show){ $("top").hidden = !show; }
+const VIEWS = {};
+function render(){
+  const [v, arg] = stack[stack.length - 1];
+  setMain(null);
+  if (tg) stack.length > 1 ? tg.BackButton.show() : tg.BackButton.hide();
+  const root = stack[0][0];
+  document.querySelectorAll("#bar button").forEach(b => b.setAttribute("aria-current", b.dataset.tab === root));
+  $("bar").hidden = ["checkout", "edit", "group", "texts", "hero"].includes(v);
+  (VIEWS[v] || VIEWS.home)(arg);
+  if (!render.keep) window.scrollTo(0, 0);
+  render.keep = false;
+}
+function badges(){
+  const n = CART.reduce((s, c) => s + c.qty, 0);
+  $("bCartN").hidden = !n; $("bCartN").textContent = n;
+  const o = ADMIN ? ORDERS.filter(o => o.status === "new").length : 0;
+  $("bMenuN").hidden = !o; $("bMenuN").textContent = o;
+}
 
-// ---------- лента ----------
-function chips(){
-  const vis = ITEMS.filter(it => it.status !== "hidden");
-  const groups = GROUPS.filter(g => ADMIN || vis.some(it => g.items.includes(it.id)));
-  if (grp !== "all" && grp !== "arch" && !GROUPS.some(g => String(g.id) === grp)) grp = "all";
-  $("secs").innerHTML = [`<button class="chip" data-g="all" aria-pressed="${grp==="all"}">Все</button>`,
-    ...groups.map(g => `<button class="chip" data-g="${g.id}" aria-pressed="${String(g.id)===grp}">${esc(g.name)}</button>`),
-    ...(ADMIN ? [`<button class="chip" data-g="arch" aria-pressed="${grp==="arch"}">Архив${ITEMS.some(i => i.status==="hidden") ? " · " + ITEMS.filter(i => i.status==="hidden").length : ""}</button>`,
-                 `<button class="chip" id="gman" aria-label="Настроить группы">✎ Группы</button>`] : [])].join("");
-  $("types").innerHTML = "";
-  $("secs").querySelectorAll("[data-g]").forEach(b => b.onclick = () => { grp = b.dataset.g; feed(); });
-  if ($("gman")) $("gman").onclick = groupsScreen;
+// ---------- карточка в сетке ----------
+function card(it){
+  const liked = LIKES.includes(it.id), sale = it.old_price > it.price;
+  return `<div class="pc">
+    <button class="ph" data-open="${esc(it.id)}">${it.photos[0] ? `<img src="${esc(it.photos[0])}" alt="" loading="lazy">` : ""}
+      ${it.status === "sold" ? '<span class="tag dark">Продано</span>' : it.status === "hidden" ? '<span class="tag dark">Архив</span>' : sale ? `<span class="tag">−${Math.round((1 - it.price / it.old_price) * 100)}%</span>` : ""}</button>
+    <button class="heart" data-like="${esc(it.id)}" aria-pressed="${liked}" aria-label="В лайки">${HEART}</button>
+    <button class="cap" data-open="${esc(it.id)}"><div class="nm">${esc(it.title)}</div><div class="pr tn">${rub(it.price)}${sale ? `<s>${rub(it.old_price)}</s>` : ""}</div></button>
+  </div>`;
 }
-function inGroup(it){
-  if (grp === "arch") return it.status === "hidden";
-  if (it.status === "hidden") return false;
-  if (grp === "all") return true;
-  const g = GROUPS.find(g => String(g.id) === grp);
-  return !!g && g.items.includes(it.id);
+function bindCards(){
+  app.querySelectorAll("[data-open]").forEach(b => b.onclick = () => go("product", b.dataset.open));
+  app.querySelectorAll("[data-like]").forEach(b => b.onclick = e => { e.stopPropagation(); toggleLike(b.dataset.like); b.setAttribute("aria-pressed", LIKES.includes(b.dataset.like)); });
 }
-function feed(){
-  view = "feed"; current = null; header(true); back(false); setMain(null);
-  $("chipsbox").hidden = tab !== "items"; $("q").hidden = tab !== "items";
-  if (tab === "orders") return orders();
-  chips();
-  const list = ITEMS.filter(it => inGroup(it) && (!query || (it.title + " " + it.id).toLowerCase().includes(query)));
-  const imp = ADMIN && !ITEMS.length ? `<div class="box"><div class="bt">Каталог пуст</div><p class="note">Загрузить 29 вещей из первого заказа вместе с фото, ценами, ссылками на поставщиков и группами?</p><button class="btn pri" id="imp">Загрузить каталог</button></div>` : "";
-  app.innerHTML = `${imp}<div class="count">${list.length} ${plural(list.length, "товар", "товара", "товаров")}${ADMIN && grp !== "arch" ? ` · в продаже ${ITEMS.filter(i => i.status==="active").length} · продано ${ITEMS.filter(i => i.status==="sold").length}` : ""}</div>
-    <div class="grid">${list.map(it => `
-      <button class="ad" data-id="${esc(it.id)}">
-        <div class="ph">${it.photos[0] ? `<img src="${esc(it.photos[0])}" alt="" loading="lazy">` : ""}${it.status !== "active" ? `<span class="st ${it.status}">${STATUS[it.status]}</span>` : ""}</div>
-        <div class="p">${rub(it.price)}</div>
-        <div class="t">${esc(it.title)}</div>
-        <div class="m">${esc(it.sizes)}</div>
-      </button>`).join("") || (ITEMS.length ? `<p class="note">${grp === "arch" ? "В архиве пусто." : "Ничего не нашлось."}</p>` : "")}</div>`;
-  app.querySelectorAll(".ad").forEach(b => b.onclick = () => open(b.dataset.id));
+function toggleLike(id){
+  const i = LIKES.indexOf(id);
+  if (i >= 0) LIKES.splice(i, 1); else { LIKES.unshift(id); haptic("light"); }
+  saveLikes();
+}
+const grid = list => list.length ? `<div class="grid">${list.map(card).join("")}</div>` : `<div class="empty">Пока пусто</div>`;
+const newest = list => [...list].sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")) || (b.sort || 0) - (a.sort || 0));
+
+// ---------- главная ----------
+const HERO_DEFAULT = {date:"", title:"EON", sub:"Москва · под заказ", text:"Одежда, которую мы сами отбираем у фабрик и проверяем по фото и отзывам.\n\nПривозим под заказ за 2–3 недели. Выберите вещь и размер — подтвердим наличие и срок в чате.", image:"", button:"Смотреть коллекцию"};
+VIEWS.home = () => {
+  const h = {...HERO_DEFAULT, ...(SET.hero || {})};
+  const items = visible(), fresh = newest(items).slice(0, 6);
+  const img = h.image || (items[0] && items[0].photos[0]) || "";
+  app.innerHTML = `
+    <section class="hero" style="${img ? `background-image:url('${esc(img)}')` : ""}"><div class="frame">
+      ${h.date ? `<div class="date tn">${esc(h.date)}</div>` : ""}
+      <div class="t">${esc(h.title)}</div>
+      ${h.sub ? `<div class="s">${esc(h.sub)}</div>` : ""}
+      <div class="txt">${esc(h.text)}</div>
+      <button class="go" id="hgo">${esc(h.button || "Смотреть коллекцию")} <span>⟶</span></button>
+    </div></section>
+    ${ADMIN && !ITEMS.length ? `<div class="adm"><div class="ttl">Каталог пуст</div><button class="btn w" id="imp">Загрузить 29 вещей из первого заказа</button></div>` : ""}
+    <div class="h2">Новое поступление</div>${grid(fresh)}
+    <div class="h2">Всё наличие <button id="all">Каталог →</button></div>${grid(items)}`;
+  $("hgo").onclick = $("all").onclick = () => go("catalog", {});
   if ($("imp")) $("imp").onclick = importSeed;
-  window.scrollTo(0, 0);
-}
+  bindCards();
+};
 
-// ---------- админ: группы (как папки в Telegram) ----------
-function groupsScreen(){
-  view = "groups"; header(false); back(true); setMain("Новая группа", () => groupEdit(null));
-  app.innerHTML = `<h1>Группы</h1>
-    <p class="note">Группы — вкладки вверху каталога. Одна вещь может быть в нескольких группах. Клиенты видят только группы, где есть товары.</p>
-    <div class="glist">${GROUPS.map((g, i) => `
-      <div class="grow">
-        <button class="gname" data-e="${g.id}"><b>${esc(g.name)}</b><span class="note">${g.items.filter(id => ITEMS.some(it => it.id === id && it.status !== "hidden")).length} ${plural(g.items.length, "товар", "товара", "товаров")}</span></button>
-        ${i ? `<button class="gico" data-up="${i}" aria-label="Выше">↑</button>` : `<span class="gico"></span>`}
-        <button class="gico del" data-d="${g.id}" aria-label="Удалить группу">✕</button>
-      </div>`).join("") || '<p class="note">Групп пока нет.</p>'}</div>
-    <button class="btn pri" id="gnew" style="width:100%;margin-top:14px">+ Новая группа</button>`;
-  $("gnew").onclick = () => groupEdit(null);
-  app.querySelectorAll("[data-e]").forEach(b => b.onclick = () => groupEdit(GROUPS.find(g => String(g.id) === b.dataset.e)));
-  app.querySelectorAll("[data-up]").forEach(b => b.onclick = async () => {
-    const i = +b.dataset.up; [GROUPS[i-1], GROUPS[i]] = [GROUPS[i], GROUPS[i-1]];
-    try { await Promise.all(GROUPS.map((g, k) => g.sort === k ? null : (g.sort = k, call("group_save", {group: g})))); } catch(e) { toast(e.message); }
-    groupsScreen();
+// ---------- каталог с фильтрами ----------
+const SIZE_ORDER = ["XXS", "XS", "S", "M", "L", "XL", "XXL", "XXXL"];
+VIEWS.catalog = (o = {}) => {
+  const st = stack[stack.length - 1]; st[1] = o = {grp:"all", size:"", sort:"", sale:false, q:"", ...o};
+  const base = o.grp === "arch" ? ITEMS.filter(it => it.status === "hidden") : visible();
+  const groups = GROUPS.filter(g => ADMIN || base.some(it => g.items.includes(it.id)));
+  let list = base.filter(it => o.grp === "all" || o.grp === "arch" || (GROUPS.find(g => String(g.id) === o.grp) || {items:[]}).items.includes(it.id));
+  const rank = s => SIZE_ORDER.includes(s) ? SIZE_ORDER.indexOf(s) : 100 + parseInt(s, 10);
+  const allSizes = [...new Set(list.flatMap(sizesOf).map(s => s.toUpperCase()))].sort((a, b) => rank(a) - rank(b));
+  if (o.size) list = list.filter(it => sizesOf(it).map(s => s.toUpperCase()).includes(o.size));
+  if (o.sale) list = list.filter(it => it.old_price > it.price);
+  if (o.q) list = list.filter(it => (it.title + " " + it.id + " " + it.type + " " + it.section).toLowerCase().includes(o.q));
+  if (o.sort === "asc") list = [...list].sort((a, b) => a.price - b.price);
+  if (o.sort === "desc") list = [...list].sort((a, b) => b.price - a.price);
+  if (o.sort === "new") list = newest(list);
+  const chip = (k, v, label) => `<button class="chip" data-k="${k}" data-v="${esc(v)}" aria-pressed="${String(o[k]) === String(v)}">${esc(label)}</button>`;
+  app.innerHTML = `
+    <button class="back" id="bk">← Назад</button>
+    <div class="h1">${o.grp === "arch" ? "Архив" : "Каталог"} <small class="tn">${list.length} ${plural(list.length, "позиция", "позиции", "позиций")}</small></div>
+    ${o.search ? `<input class="f search" id="q" type="search" placeholder="Поиск по названию" value="${esc(o.q)}">` : ""}
+    <span class="lbl">Категории</span>
+    <div class="chips">${chip("grp", "all", "Все")}${groups.map(g => chip("grp", String(g.id), g.name)).join("")}${ADMIN ? chip("grp", "arch", "Архив") : ""}</div>
+    ${allSizes.length ? `<span class="lbl">Размер</span><div class="chips">${chip("size", "", "Любой")}${allSizes.map(s => chip("size", s, s)).join("")}</div>` : ""}
+    <span class="lbl">Фильтры</span>
+    <div class="chips">
+      <button class="chip" id="fprice" aria-pressed="${o.sort === "asc" || o.sort === "desc"}">Цена ${o.sort === "desc" ? "↓" : o.sort === "asc" ? "↑" : ""}</button>
+      <button class="chip" id="fnew" aria-pressed="${o.sort === "new"}">Новинки</button>
+      <button class="chip" id="fsale" aria-pressed="${o.sale}">% Sale</button>
+    </div>
+    <div style="height:14px"></div>${grid(list)}`;
+  $("bk").onclick = back;
+  if (stack.length === 1) $("bk").hidden = true;
+  const upd = p => { Object.assign(o, p); render.keep = true; render(); };
+  app.querySelectorAll(".chip[data-k]").forEach(b => b.onclick = () => upd({[b.dataset.k]: b.dataset.v}));
+  $("fprice").onclick = () => upd({sort: o.sort === "asc" ? "desc" : o.sort === "desc" ? "" : "asc"});
+  $("fnew").onclick = () => upd({sort: o.sort === "new" ? "" : "new"});
+  $("fsale").onclick = () => upd({sale: !o.sale});
+  if ($("q")) {
+    const q = $("q");
+    q.oninput = () => { o.q = q.value.trim().toLowerCase(); const pos = q.selectionStart; render.keep = true; render(); const n = $("q"); n.focus(); n.setSelectionRange(pos, pos); };
+    if (!o.q) setTimeout(() => q.focus(), 50);
+  }
+  bindCards();
+};
+
+// ---------- товар ----------
+function descHTML(t){
+  const out = []; let ul = null;
+  String(t || "").split("\n").forEach(line => {
+    const s = line.trim();
+    if (/^[•\-–]\s*/.test(s)) { if (!ul) { ul = []; out.push(ul); } ul.push(s.replace(/^[•\-–]\s*/, "")); }
+    else { ul = null; if (s) out.push(s); }
   });
-  app.querySelectorAll("[data-d]").forEach(b => { let armed = false; b.onclick = async () => {
-    if (!armed) { armed = true; b.textContent = "Удалить?"; b.classList.add("wide"); setTimeout(() => { armed = false; b.textContent = "✕"; b.classList.remove("wide"); }, 3000); return; }
-    try { await call("group_delete", {id: +b.dataset.d}); GROUPS = GROUPS.filter(g => String(g.id) !== b.dataset.d); haptic(); toast("Группа удалена, товары остались"); groupsScreen(); } catch(e) { toast(e.message); }
-  }; });
-  window.scrollTo(0, 0);
+  return out.map(x => Array.isArray(x) ? `<ul>${x.map(li => `<li>${esc(li)}</li>`).join("")}</ul>` : `<p>${esc(x)}</p>`).join("");
 }
-function groupEdit(g){
-  const isNew = !g;
-  g = g ? {...g, items: [...g.items]} : {name: "", items: [], sort: GROUPS.length};
-  view = "group"; header(false); back(true);
-  const list = [...ITEMS].sort((a, b) => (a.status === "hidden") - (b.status === "hidden"));
-  app.innerHTML = `<h1>${isNew ? "Новая группа" : "Группа"}</h1>
-    <label class="lbl" for="g_n">Название</label><input class="f" id="g_n" maxlength="30" placeholder="Например: Пуховики" value="${esc(g.name)}">
-    <div class="h" style="display:flex;justify-content:space-between;align-items:baseline">Товары в группе <span class="note" id="g_c"></span></div>
-    <div class="gsel">${list.map(it => `
-      <label class="gitem"><input type="checkbox" value="${esc(it.id)}" ${g.items.includes(it.id) ? "checked" : ""}>
-        <img src="${esc(it.photos[0] || "")}" alt=""><span><span class="t">${esc(it.title)}</span><span class="note">${esc(it.id)} · ${rub(it.price)}${it.status === "hidden" ? " · в архиве" : ""}</span></span></label>`).join("")}</div>`;
-  const cnt = () => $("g_c").textContent = "выбрано " + app.querySelectorAll(".gitem input:checked").length;
-  app.querySelectorAll(".gitem input").forEach(c => c.onchange = cnt); cnt();
-  const doSave = async () => {
-    g.name = $("g_n").value.trim();
-    if (!g.name) { toast("Введите название группы"); return; }
-    g.items = [...app.querySelectorAll(".gitem input:checked")].map(c => c.value);
-    try {
-      const {group} = await call("group_save", {group: g});
-      const i = GROUPS.findIndex(x => x.id === group.id); if (i >= 0) GROUPS[i] = group; else GROUPS.push(group);
-      haptic(); toast("Группа сохранена"); groupsScreen();
-    } catch(e) { toast(e.message); }
-  };
-  setMain("Сохранить группу", doSave);
-  if (!tg || !tg.initData) app.insertAdjacentHTML("beforeend", `<button class="btn pri" id="g_s" style="width:100%;margin-top:14px">Сохранить группу</button>`), $("g_s").onclick = doSave;
-  window.scrollTo(0, 0);
-}
-const plural = (n, a, b, c) => { const m = n % 10, h = n % 100; return m === 1 && h !== 11 ? a : m >= 2 && m <= 4 && (h < 12 || h > 14) ? b : c; };
-
-// ---------- карточка ----------
-function open(id){
-  const it = ITEMS.find(x => x.id === id); if (!it) return feed();
-  view = "item"; current = it; header(false); back(true);
-  const p = it.private || {};
+VIEWS.product = id => {
+  const it = byId(id); if (!it) return back();
+  const sizes = sizesOf(it), p = it.private || {}, sale = it.old_price > it.price;
+  let size = sizes.length === 1 ? sizes[0] : "";
+  const inCart = () => CART.some(c => c.id === it.id && c.size === size);
+  const groupsOf = GROUPS.filter(g => g.items.includes(it.id)).map(g => g.name);
   const cost = p.cost || 0, profit = it.price - cost, mult = cost ? (it.price / cost).toFixed(1) : "—";
   app.innerHTML = `
+    <button class="back" id="bk">← Назад</button>
     <div class="gal" id="gal">${it.photos.map(u => `<img src="${esc(u)}" alt="">`).join("")}</div>
-    ${it.photos.length > 1 ? `<div class="dots" id="dots">${it.photos.map((_, i) => `<i class="${i?"":"on"}"></i>`).join("")}</div>` : ""}
-    <h1>${esc(it.title)}</h1>
-    <div class="price">${rub(it.price)}</div>
-    <div class="meta">${[it.section, it.type].filter(Boolean).map(esc).join(" · ")} · Москва · под заказ 2–3 недели</div>
-    ${ADMIN ? `<div class="actions"><button class="btn pri" id="ed">Редактировать</button><button class="btn" id="cp">Текст для Авито</button></div>
-      <button class="btn" id="arch" style="width:100%">${it.status === "hidden" ? "Вернуть из архива" : "В архив"}</button>`
-            : `<div class="actions"><button class="btn pri" id="ord">Заказать</button><button class="btn" id="ask">Задать вопрос</button></div>`}
-    <div class="h">Характеристики</div>
-    <dl class="facts"><dt>Состояние</dt><dd>Новое</dd>${it.sizes ? `<dt>Размер</dt><dd>${esc(it.sizes)}</dd>` : ""}${(it.facts || []).map(([k,v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>
-    <div class="h">Описание</div>
-    <p class="desc">${esc(it.description)}</p>
-    ${ADMIN ? `<div class="box"><div class="bt">Для админов</div>
-      <div><span class="lbl">Статус</span><div class="seg">${Object.entries(STATUS).map(([k,v]) => `<button data-s="${k}" aria-pressed="${k===it.status}">${v}</button>`).join("")}</div></div>
-      ${(p.links || []).length ? `<div><span class="lbl">Где заказывать</span>${p.links.map(([n,u]) => `<button class="src" data-u="${esc(u)}">${esc(n)} ↗</button>`).join("")}</div>` : ""}
-      ${p.qty ? `<div><span class="lbl">В заказе</span>${esc(p.qty)}</div>` : ""}
-      ${cost ? `<div class="money"><div><b>¥${esc(p.cny)}</b><span>закупка</span></div><div><b>${rub(cost)}</b><span>под ключ</span></div><div><b class="${mult>=1.7?"good":"bad"}">${profit>0?"+":""}${rub(profit)}</b><span>с вещи · ×${mult}</span></div></div>` : ""}
-      ${p.warn ? `<p class="warn">⚠ ${esc(p.warn)}</p>` : ""}
-      <div><span class="lbl">Группы</span><div class="seg" id="igr">${GROUPS.map(g => `<button data-g="${g.id}" aria-pressed="${g.items.includes(it.id)}">${esc(g.name)}</button>`).join("") || '<span class="note">Групп нет — создайте во вкладке «✎ Группы».</span>'}</div></div>
-      <p class="note">Этот блок клиенты не видят.</p></div>` : ""}`;
-  window.scrollTo(0, 0);
+    ${it.photos.length > 1 ? `<div class="dots" id="dots">${it.photos.map((_, i) => `<i class="${i ? "" : "on"}"></i>`).join("")}</div>` : ""}
+    <div class="ptitle"><h1>${esc(it.title)}</h1><button class="heart" id="lk" aria-pressed="${LIKES.includes(it.id)}" aria-label="В лайки">${HEART}</button></div>
+    <div class="pprice tn">${rub(it.price)}${sale ? `<s>${rub(it.old_price)}</s>` : ""}</div>
+    <dl class="attrs">
+      ${it.type || groupsOf.length ? `<div><dt>Категория</dt><dd>${esc(it.type || groupsOf[0])}</dd></div>` : ""}
+      ${it.section ? `<div><dt>Для кого</dt><dd>${esc(it.section)}</dd></div>` : ""}
+      ${(it.facts || []).slice(0, 6).map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}
+      <div><dt>Срок</dt><dd>Под заказ 2–3 недели</dd></div>
+    </dl>
+    <div class="desc">${descHTML(it.description)}</div>
+    ${sizes.length ? `<div class="sizes" id="sz">${sizes.map(s => `<button data-s="${esc(s)}" aria-pressed="${s === size}">${esc(s)}</button>`).join("")}</div>` : ""}
+    <div class="stack"><button class="btn w" id="add"></button><button class="btn" id="ask">Написать продавцу</button></div>
+    ${ADMIN ? `<div class="adm"><div class="ttl">Для админов · ${esc(it.id)} · ${STATUS[it.status]}</div>
+      <div class="two"><button class="btn sm" id="ed">Редактировать</button><button class="btn sm" id="arch">${it.status === "hidden" ? "Из архива" : "В архив"}</button></div>
+      <div class="two" style="margin-top:8px"><button class="btn sm" id="sold">${it.status === "sold" ? "Снова в продаже" : "Продано"}</button><button class="btn sm" id="cp">Текст для Авито</button></div>
+      <span class="lbl">Группы</span><div class="seg" id="igr">${GROUPS.map(g => `<button data-g="${g.id}" aria-pressed="${g.items.includes(it.id)}">${esc(g.name)}</button>`).join("") || '<span class="note">Групп нет</span>'}</div>
+      ${(p.links || []).length ? `<span class="lbl">Где заказывать</span>${p.links.map(([n, u]) => `<button class="src" data-u="${esc(u)}">${esc(n)} ↗</button>`).join("")}` : ""}
+      ${p.qty ? `<span class="lbl">В заказе</span><div>${esc(p.qty)}</div>` : ""}
+      ${cost ? `<div class="money"><div><b>¥${esc(p.cny)}</b><span>закупка</span></div><div><b>${rub(cost)}</b><span>под ключ</span></div><div><b class="${mult >= 1.7 ? "good" : "bad"}">${profit > 0 ? "+" : ""}${rub(profit)}</b><span>×${mult}</span></div></div>` : ""}
+      ${p.warn ? `<p class="note bad">⚠ ${esc(p.warn)}</p>` : ""}
+    </div>` : ""}`;
   const gal = $("gal"), dots = $("dots");
   if (dots) gal.addEventListener("scroll", () => { const i = Math.round(gal.scrollLeft / gal.clientWidth); dots.querySelectorAll("i").forEach((d, j) => d.classList.toggle("on", i === j)); }, {passive:true});
+  $("bk").onclick = back;
+  $("lk").onclick = () => { toggleLike(it.id); $("lk").setAttribute("aria-pressed", LIKES.includes(it.id)); };
+  const btn = () => {
+    const b = $("add");
+    if (it.status !== "active") { b.disabled = true; b.textContent = it.status === "sold" ? "Продано" : "Нет в продаже"; setMain(null); return; }
+    if (sizes.length && !size) { b.disabled = true; b.textContent = "Выберите размер"; setMain(null); return; }
+    b.disabled = false; b.textContent = inCart() ? "Убрать из корзины" : "В корзину";
+    setMain(inCart() ? "Перейти в корзину" : "В корзину · " + rub(it.price), () => inCart() ? openCart() : addToCart());
+  };
+  const addToCart = () => { CART.push({id: it.id, size, qty: 1}); saveCart(); haptic(); toast("Добавлено в корзину"); btn(); };
+  $("add").onclick = () => { if (inCart()) { CART = CART.filter(c => !(c.id === it.id && c.size === size)); saveCart(); btn(); } else addToCart(); };
+  app.querySelectorAll("#sz button").forEach(b => b.onclick = () => { size = b.dataset.s; app.querySelectorAll("#sz button").forEach(x => x.setAttribute("aria-pressed", x === b)); haptic("light"); btn(); });
+  $("ask").onclick = async () => { try { await call("ask", {item_id: it.id}); haptic(); toast("Напишите вопрос в чат с ботом"); setTimeout(() => tg && tg.close(), 900); } catch(e) { toast(e.message); } };
+  btn();
   if (ADMIN) {
-    $("ed").onclick = () => edit(it);
-    $("cp").onclick = () => copy(adText(it));
-    $("arch").onclick = async () => { try { await save({...it, status: it.status === "hidden" ? "active" : "hidden"}); haptic(); toast(it.status === "hidden" ? "Вернул в продажу" : "Убрал в архив"); feed(); } catch(e) { toast(e.message); } };
+    $("ed").onclick = () => go("edit", it.id);
+    $("cp").onclick = () => copy(`${it.title}\n\n${it.description}\n\nЦена: ${rub(it.price)}`);
+    $("arch").onclick = async () => { try { const was = it.status; await save({...it, status: was === "hidden" ? "active" : "hidden"}); haptic(); toast(was === "hidden" ? "Вернул в продажу" : "Убрал в архив"); back(); } catch(e) { toast(e.message); } };
+    $("sold").onclick = async () => { try { await save({...it, status: it.status === "sold" ? "active" : "sold"}); haptic(); render.keep = true; render(); } catch(e) { toast(e.message); } };
     app.querySelectorAll("#igr button").forEach(b => b.onclick = async () => {
       const g = GROUPS.find(x => String(x.id) === b.dataset.g), on = !g.items.includes(it.id);
-      const ng = {...g, items: on ? [...g.items, it.id] : g.items.filter(x => x !== it.id)};
-      try { const {group} = await call("group_save", {group: ng}); Object.assign(g, group); b.setAttribute("aria-pressed", on); haptic(); } catch(e) { toast(e.message); }
+      try { const {group} = await call("group_save", {group: {...g, items: on ? [...g.items, it.id] : g.items.filter(x => x !== it.id)}}); Object.assign(g, group); b.setAttribute("aria-pressed", on); haptic("light"); } catch(e) { toast(e.message); }
     });
-    app.querySelectorAll(".seg button").forEach(b => b.onclick = async () => { try { await save({...it, status: b.dataset.s}); haptic(); open(it.id); } catch(e) { toast(e.message); } });
-    app.querySelectorAll(".src").forEach(b => b.onclick = () => { tg && tg.openLink ? tg.openLink(b.dataset.u) : window.open(b.dataset.u, "_blank"); });
-    setMain(null);
-  } else {
-    $("ord").onclick = () => orderForm(it);
-    $("ask").onclick = () => ask(it);
-    setMain(it.status === "sold" ? null : "Заказать", () => orderForm(it));
-    if (it.status === "sold") { $("ord").disabled = true; $("ord").textContent = "Продано"; }
+    app.querySelectorAll(".src").forEach(b => b.onclick = () => tg && tg.openLink ? tg.openLink(b.dataset.u) : window.open(b.dataset.u, "_blank"));
   }
-}
+};
 
-// ---------- клиент: заказ и вопрос ----------
-function orderForm(it){
-  if (it.status === "sold") return;
-  view = "order"; header(false); back(true);
-  const sizes = (it.sizes || "").split(/[\s,\/]+/).filter(s => /^(X{0,3}S|M|X{0,3}L|\d{2,3})$/i.test(s));
-  let size = sizes.length === 1 ? sizes[0] : "";
+// ---------- панели ----------
+function openDrawer(id){ drawer = id; $(id).classList.add("on"); $("veil").classList.add("on"); if (tg) tg.BackButton.show(); }
+function closeDrawer(){ if (!drawer) return; $(drawer).classList.remove("on"); $("veil").classList.remove("on"); drawer = null; if (tg && stack.length <= 1) tg.BackButton.hide(); }
+$("veil").onclick = closeDrawer;
+function openCart(){ drawCart(); openDrawer("cart"); }
+function drawCart(){
+  CART = CART.filter(c => byId(c.id) && byId(c.id).status === "active");
+  const n = CART.reduce((s, c) => s + c.qty, 0), total = CART.reduce((s, c) => s + byId(c.id).price * c.qty, 0);
+  $("cart").innerHTML = `
+    <div class="dh"><span>Корзина<small class="tn">${n} шт.</small></span><button class="ib" id="cx" aria-label="Закрыть"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="db">${CART.length ? CART.map((c, i) => { const it = byId(c.id); return `
+      <div class="cl"><img src="${esc(it.photos[0] || "")}" alt="">
+        <div><div class="nm">${esc(it.title)}</div><div class="note up" style="font-size:10px;margin-top:3px">${c.size ? "Размер " + esc(c.size) : ""}</div><div class="tn" style="margin-top:3px">${rub(it.price)}</div></div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end"><div class="qty"><button data-q="${i}" data-d="-1" aria-label="Меньше">−</button><span class="tn">${c.qty}</span><button data-q="${i}" data-d="1" aria-label="Больше">+</button></div><button class="rm" data-rm="${i}" aria-label="Убрать">×</button></div>
+      </div>`; }).join("") : `<div class="empty">Корзина пуста</div>`}</div>
+    ${CART.length ? `<div class="df"><div class="tot"><span>Итого</span><b class="tn">${rub(total)}</b></div><button class="btn w" id="co">Оформить</button><button class="note up" id="cc" style="font-size:10px;padding:6px">Очистить</button></div>` : ""}`;
+  $("cx").onclick = closeDrawer;
+  $("cart").querySelectorAll("[data-q]").forEach(b => b.onclick = () => { const c = CART[+b.dataset.q]; c.qty = Math.max(1, Math.min(10, c.qty + +b.dataset.d)); saveCart(); drawCart(); });
+  $("cart").querySelectorAll("[data-rm]").forEach(b => b.onclick = () => { CART.splice(+b.dataset.rm, 1); saveCart(); drawCart(); });
+  if ($("co")) $("co").onclick = () => { closeDrawer(); go("checkout"); };
+  if ($("cc")) $("cc").onclick = () => { CART = []; saveCart(); drawCart(); };
+}
+function drawMenu(){
+  const nNew = ORDERS.filter(o => o.status === "new").length;
+  $("menu").innerHTML = `
+    <div class="dh"><span>Меню</span><button class="ib" id="mx" aria-label="Закрыть"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="db menu">
+      <button class="mi" data-go="search">Поиск</button>
+      <button class="mi" id="mcat">Весь каталог <span>›</span></button>
+      <div class="sub" id="msub" hidden>${[{id:"all", name:"Все товары"}, ...GROUPS.filter(g => ADMIN || visible().some(it => g.items.includes(it.id)))].map(g => `<button class="mi" data-grp="${g.id}">${esc(g.name)} <span>›</span></button>`).join("")}</div>
+      <button class="mi" data-go="orders">Мои заказы</button>
+      <button class="mi" data-page="about">О нас</button>
+      <button class="mi" data-page="contacts">Контакты</button>
+      <button class="mi" data-page="faq">Вопросы</button>
+      ${ADMIN ? `<div class="sect">Админка</div>
+      <button class="mi" data-go="aorders">Заказы клиентов ${nNew ? `<span class="badge red" style="position:static">${nNew}</span>` : ""}</button>
+      <button class="mi" data-go="edit">+ Добавить товар</button>
+      <button class="mi" data-go="groups">Группы (категории)</button>
+      <button class="mi" data-grp="arch">Архив</button>
+      <button class="mi" data-go="hero">Главная: блок дропа</button>
+      <button class="mi" data-go="texts">Тексты: о нас, контакты, вопросы</button>` : ""}
+    </div>`;
+  $("mx").onclick = closeDrawer;
+  $("mcat").onclick = () => { $("msub").hidden = !$("msub").hidden; };
+  $("menu").querySelectorAll("[data-go]").forEach(b => b.onclick = () => { closeDrawer(); b.dataset.go === "search" ? go("catalog", {search:true}) : go(b.dataset.go); });
+  $("menu").querySelectorAll("[data-grp]").forEach(b => b.onclick = () => { closeDrawer(); go("catalog", {grp: b.dataset.grp}); });
+  $("menu").querySelectorAll("[data-page]").forEach(b => b.onclick = () => { closeDrawer(); go("page", b.dataset.page); });
+}
+$("bCart").onclick = openCart;
+$("bMenu").onclick = () => { drawMenu(); openDrawer("menu"); };
+document.querySelectorAll("#bar button").forEach(b => b.onclick = () => { closeDrawer(); tab(b.dataset.tab); });
+
+// ---------- оформление ----------
+VIEWS.checkout = () => {
+  CART = CART.filter(c => byId(c.id) && byId(c.id).status === "active");
+  if (!CART.length) return back();
+  const total = CART.reduce((s, c) => s + byId(c.id).price * c.qty, 0), n = CART.reduce((s, c) => s + c.qty, 0);
+  const ct = {name: USER ? [USER.first_name, USER.last_name].filter(Boolean).join(" ") : "", delivery: "СДЭК", ...CONTACT};
   app.innerHTML = `
-    <h1>Заказ</h1>
-    <div class="ord" style="border:0"><img src="${esc(it.photos[0] || "")}" alt=""><div><div class="t">${esc(it.title)}</div><div class="meta">${rub(it.price)} · под заказ 2–3 недели</div></div></div>
-    ${sizes.length ? `<div class="h">Размер</div><div class="sizes">${sizes.map(s => `<button data-s="${esc(s)}" aria-pressed="${s===size}">${esc(s)}</button>`).join("")}</div>` : ""}
-    <div class="h">Комментарий</div>
-    <textarea class="f" id="cm" maxlength="500" placeholder="Рост, вес, цвет, как удобнее получить — по желанию"></textarea>
-    <p class="note">После заявки продавец напишет вам в этот чат с ботом: подтвердит наличие, срок и оплату. Предоплата сейчас не нужна.</p>`;
-  app.querySelectorAll(".sizes button").forEach(b => b.onclick = () => { size = b.dataset.s; app.querySelectorAll(".sizes button").forEach(x => x.setAttribute("aria-pressed", x === b)); });
+    <button class="back" id="bk">← Назад</button>
+    <div class="h1">Оформление <small class="tn">${n} шт.</small></div>
+    ${CART.map(c => { const it = byId(c.id); return `<div class="ol"><span>${esc(it.title)}${c.size ? " · размер " + esc(c.size) : ""}${c.qty > 1 ? " × " + c.qty : ""}</span><span class="tn">${rub(it.price * c.qty)}</span></div>`; }).join("")}
+    <div class="tot" style="margin:14px 0 6px"><span>Итого</span><b class="tn">${rub(total)}</b></div>
+    <label class="lbl" for="c_n">ФИО</label><input class="f" id="c_n" autocomplete="name" placeholder="Фамилия Имя Отчество" value="${esc(ct.name)}">
+    <label class="lbl" for="c_p">Телефон</label><input class="f" id="c_p" type="tel" autocomplete="tel" placeholder="Номер для пункта выдачи" value="${esc(ct.phone || "")}">
+    <label class="lbl" for="c_c">Город</label><input class="f" id="c_c" autocomplete="address-level2" placeholder="Куда везти" value="${esc(ct.city || "")}">
+    <span class="lbl">Служба доставки</span><div class="seg" id="c_d">${["СДЭК", "Яндекс", "Почта России", "Самовывоз, Москва"].map(d => `<button data-d="${d}" aria-pressed="${d === ct.delivery}">${d}</button>`).join("")}</div>
+    <label class="lbl" for="c_a">Пункт выдачи</label><input class="f" id="c_a" placeholder="Адрес пункта выдачи" value="${esc(ct.pickup || "")}">
+    <label class="lbl" for="c_m">Комментарий</label><textarea class="f" id="c_m" placeholder="Необязательно"></textarea>
+    <div style="height:16px"></div>
+    <button class="btn w" id="send">Отправить заявку</button>
+    <p class="note up" style="text-align:center;font-size:10px;margin-top:12px">Детали и доставку подтвердит продавец в чате · отправка из Москвы</p>`;
+  $("bk").onclick = back;
+  let delivery = ct.delivery;
+  app.querySelectorAll("#c_d button").forEach(b => b.onclick = () => { delivery = b.dataset.d; app.querySelectorAll("#c_d button").forEach(x => x.setAttribute("aria-pressed", x === b)); });
   const send = async () => {
-    if (sizes.length > 1 && !size) { toast("Выберите размер"); return; }
-    if (tg) tg.MainButton.showProgress();
+    const contact = {name: $("c_n").value.trim(), phone: $("c_p").value.trim(), city: $("c_c").value.trim(), delivery, pickup: $("c_a").value.trim()};
+    if (!contact.name) { toast("Укажите ФИО"); $("c_n").focus(); return; }
+    if (contact.phone.replace(/\D/g, "").length < 10) { toast("Укажите телефон"); $("c_p").focus(); return; }
+    if (!contact.city && !delivery.startsWith("Самовывоз")) { toast("Укажите город"); $("c_c").focus(); return; }
+    $("send").disabled = true; if (tg) tg.MainButton.showProgress();
     try {
-      await call("order", {item_id: it.id, size, comment: $("cm").value.trim()});
-      haptic(); setMain(null); view = "done";
-      app.innerHTML = `<div class="done"><div class="big">✓</div><h1>Заявка отправлена</h1><p class="note">Продавец скоро напишет вам в чат с ботом EON.</p><button class="btn pri" id="bk" style="width:100%;margin-top:16px">Вернуться в каталог</button></div>`;
-      $("bk").onclick = feed;
-    } catch(e) { toast(e.message); haptic("error"); }
+      const r = await call("order", {cart: CART, contact, comment: $("c_m").value.trim()});
+      CONTACT = contact; store.set("eon_contact", contact);
+      CART = []; saveCart(); haptic();
+      stack = [["home"], ["done", r.id]]; render();
+    } catch(e) { toast(e.message); haptic("error"); $("send").disabled = false; }
     finally { if (tg) tg.MainButton.hideProgress(); }
   };
-  setMain("Отправить заявку", send);
-  if (!tg || !tg.initData) app.insertAdjacentHTML("beforeend", `<button class="btn pri" id="snd" style="width:100%;margin-top:14px">Отправить заявку</button>`), $("snd").onclick = send;
-}
-async function ask(it){
-  try { await call("ask", {item_id: it.id}); haptic(); toast("Напишите вопрос в чат с ботом"); setTimeout(() => tg && tg.close(), 900); }
-  catch(e) { toast(e.message); }
-}
+  $("send").onclick = send;
+  setMain("Отправить заявку · " + rub(total), send);
+};
+VIEWS.done = id => {
+  app.innerHTML = `<div class="done"><div class="big">✓</div><div class="h1" style="justify-content:center">Заявка №${esc(id)}</div>
+    <p class="note">Продавец напишет вам в чат с ботом EON: подтвердит наличие, доставку и оплату.</p>
+    <div class="stack" style="margin-top:22px"><button class="btn w" id="d1">Мои заказы</button><button class="btn" id="d2">На главную</button></div></div>`;
+  $("d1").onclick = () => { stack = [["home"]]; go("orders"); };
+  $("d2").onclick = () => tab("home");
+};
 
-// ---------- админ: редактор ----------
-function edit(it){
-  const isNew = !it;
-  it = it ? JSON.parse(JSON.stringify(it)) : {title:"", price:0, section: "", type: "", sizes:"", facts:[], description:"", photos:[], status:"active", private:{}};
+// ---------- match: свайпы как в Tinder ----------
+VIEWS.match = () => {
+  const pool = visible().filter(it => it.status === "active" && !LIKES.includes(it.id) && !SEEN.includes(it.id));
+  if (!pool.length) {
+    app.innerHTML = `<div class="empty" style="padding-top:120px">Вы посмотрели всё</div><div class="stack"><button class="btn" id="mr">Начать заново</button><button class="btn w" id="ml">Мои лайки</button></div>`;
+    $("mr").onclick = () => { SEEN = []; render(); };
+    $("ml").onclick = () => tab("likes");
+    return;
+  }
+  const it = pool[0];
+  app.innerHTML = `<div class="mwrap"><div class="mcard" id="mc">
+      <div class="ph"><img src="${esc(it.photos[0] || "")}" alt=""></div>
+      <div class="cap"><span>${esc(it.title)}</span><span class="tn">${rub(it.price)}</span></div>
+      <div class="stamp like">Лайк</div><div class="stamp nope">Пропуск</div>
+    </div></div>
+    <div class="mbtns"><button id="mn" aria-label="Пропустить"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button><button class="y" id="my" aria-label="Лайк">${HEART}</button></div>`;
+  const c = $("mc"), like = c.querySelector(".like"), nope = c.querySelector(".nope");
+  const decide = yes => {
+    c.style.transform = `translateX(${yes ? 140 : -140}%) rotate(${yes ? 18 : -18}deg)`; c.style.opacity = 0;
+    if (yes) { LIKES.unshift(it.id); saveLikes(); haptic("light"); } else SEEN.push(it.id);
+    setTimeout(() => { render.keep = true; render(); }, 220);
+  };
+  $("my").onclick = () => decide(true); $("mn").onclick = () => decide(false);
+  let x0 = null, dx = 0, moved = false;
+  c.addEventListener("pointerdown", e => { x0 = e.clientX; dx = 0; moved = false; c.style.transition = "none"; c.setPointerCapture(e.pointerId); });
+  c.addEventListener("pointermove", e => { if (x0 === null) return; dx = e.clientX - x0; if (Math.abs(dx) > 6) moved = true; c.style.transform = `translateX(${dx}px) rotate(${dx / 18}deg)`; like.style.opacity = Math.max(0, dx / 100); nope.style.opacity = Math.max(0, -dx / 100); });
+  const up = () => { if (x0 === null) return; x0 = null; c.style.transition = ""; if (Math.abs(dx) > 90) decide(dx > 0); else { c.style.transform = ""; like.style.opacity = nope.style.opacity = 0; if (!moved) go("product", it.id); } };
+  c.addEventListener("pointerup", up); c.addEventListener("pointercancel", up);
+};
+VIEWS.likes = () => {
+  const list = LIKES.map(byId).filter(it => it && it.status !== "hidden");
+  app.innerHTML = `<div class="h1" style="margin-top:14px">Лайки <small class="tn">${list.length} ${plural(list.length, "позиция", "позиции", "позиций")}</small></div>
+    ${list.length ? grid(list) + `<button class="note up" id="lc" style="display:block;margin:20px auto;font-size:10px">Очистить</button>` : `<div class="empty">Нажмите ♡ на товаре или листайте Match</div>`}`;
+  bindCards();
+  if ($("lc")) $("lc").onclick = () => { LIKES = []; saveLikes(); render(); };
+};
+
+// ---------- мои заказы и страницы ----------
+VIEWS.orders = async () => {
+  app.innerHTML = `<button class="back" id="bk">← Назад</button><div class="h1">Мои заказы</div><div class="spin">Загрузка</div>`;
+  $("bk").onclick = back;
+  if (!tg || !tg.initData) { app.querySelector(".spin").outerHTML = `<div class="empty">Откройте магазин в Telegram — заказы привязаны к вашему аккаунту</div>`; return; }
+  let list = [];
+  try { list = (await call("my_orders")).orders; } catch(e) { toast(e.message); }
+  if (stack[stack.length - 1][0] !== "orders") return;
+  app.querySelector(".spin").outerHTML = list.length ? list.map(o => orderCard(o, false)).join("") : `<div class="empty">Заказов пока нет</div>`;
+};
+function orderLines(o){
+  const fallback = byId(o.item_id) || {};
+  const lines = (o.cart && o.cart.length) ? o.cart : [{id:o.item_id, title:fallback.title || o.item_id, size:o.size, qty:1, price:fallback.price || 0}];
+  return lines.map(l => `<div class="ln"><img src="${esc(l.photo || ((byId(l.id) || {}).photos || [])[0] || "")}" alt=""><div style="flex:1;min-width:0"><div class="up" style="font-size:10.5px">${esc(l.title)}</div><div class="note">${l.size ? "размер " + esc(l.size) + " · " : ""}${l.qty > 1 ? l.qty + " шт · " : ""}${rub(l.price * (l.qty || 1))}</div></div></div>`).join("");
+}
+function orderCard(o, admin){
+  const d = new Date(o.created_at).toLocaleString("ru-RU", {day:"numeric", month:"short", hour:"2-digit", minute:"2-digit"});
+  const c = o.contact || {};
+  return `<div class="ord"><div class="hd"><span>№${o.id} · ${d}</span><span class="st ${o.status}">${OST[o.status] || esc(o.status)}</span></div>
+    ${orderLines(o)}
+    ${o.total ? `<div class="tot" style="margin-top:10px"><span>Итого</span><b class="tn">${rub(o.total)}</b></div>` : ""}
+    ${admin ? `<div class="ct">${esc([c.name || o.user_name, c.phone, [c.city, c.delivery].filter(Boolean).join(" · "), c.pickup, o.comment ? "«" + o.comment + "»" : ""].filter(Boolean).join("\n"))}\nTelegram: ${esc(o.user_name)}</div>
+      <div class="row">${Object.entries(OST).map(([k, v]) => `<button class="chip" data-os="${k}" data-oid="${o.id}" aria-pressed="${o.status === k}">${v}</button>`).join("")}</div>
+      <div class="row">${o.username ? `<button class="btn sm" data-u="${esc(o.username)}">Написать @${esc(o.username)}</button>` : ""}${c.phone ? `<button class="btn sm" data-cp="${esc(c.phone)}">Скопировать телефон</button>` : ""}</div>` : ""}
+  </div>`;
+}
+const PAGES = {about:"О нас", contacts:"Контакты", faq:"Вопросы"};
+const PAGE_DEFAULT = {
+  about: "EON — небольшой магазин из Москвы, нас двое.\n\nМы отбираем вещи у проверенных фабрик, смотрим реальные фото и отзывы и привозим под заказ. На сообщения отвечаем сами.",
+  contacts: "Пишите прямо в этот бот — ответим здесь же.\n\nМосква, отправка по всей России: СДЭК, Яндекс, Почта.",
+  faq: "Сколько ждать заказ?\nОбычно 2–3 недели: доставка от фабрики до Москвы и отправка вам.\n\nНужна ли предоплата?\nДетали оплаты подтвердим в чате после заявки.\n\nКак подобрать размер?\nНапишите рост и вес в комментарии к заказу — подскажем."
+};
+VIEWS.page = key => {
+  const text = (SET.pages || {})[key] || PAGE_DEFAULT[key] || "";
+  app.innerHTML = `<button class="back" id="bk">← Назад</button><div class="h1">${PAGES[key]}</div><div class="desc" style="white-space:pre-line">${esc(text)}</div>
+    <button class="btn" id="pw" style="margin-top:20px">Написать в чат</button>`;
+  $("bk").onclick = back;
+  $("pw").onclick = () => { if (tg) tg.close(); };
+};
+
+// ---------- админ: заказы ----------
+async function loadOrders(){ if (!ADMIN) return; try { ORDERS = (await call("orders")).orders || []; } catch(_) {} badges(); }
+VIEWS.aorders = async () => {
+  const st = stack[stack.length - 1]; const f = st[1] || "new"; st[1] = f;
+  app.innerHTML = `<button class="back" id="bk">← Назад</button><div class="h1">Заказы клиентов</div><div class="spin">Загрузка</div>`;
+  $("bk").onclick = back;
+  await loadOrders();
+  if (stack[stack.length - 1] !== st) return;
+  const list = f === "all" ? ORDERS : ORDERS.filter(o => o.status === f);
+  app.querySelector(".spin").outerHTML = `<div class="chips" style="margin-bottom:12px">${[["new", "Новые"], ["work", "В работе"], ["sent", "Отправлены"], ["all", "Все"]].map(([k, v]) => `<button class="chip" data-f="${k}" aria-pressed="${f === k}">${v} <span class="tn">${k === "all" ? ORDERS.length : ORDERS.filter(o => o.status === k).length}</span></button>`).join("")}</div>
+    ${list.length ? list.map(o => orderCard(o, true)).join("") : `<div class="empty">Здесь пусто</div>`}
+    <p class="note">Смена статуса отправляет клиенту сообщение в бота. Ответить клиенту можно и в боте: «Ответить» на сообщение о заказе.</p>`;
+  app.querySelectorAll("[data-f]").forEach(b => b.onclick = () => { st[1] = b.dataset.f; render.keep = true; render(); });
+  app.querySelectorAll("[data-os]").forEach(b => b.onclick = async () => { try { await call("order_status", {id: +b.dataset.oid, status: b.dataset.os, notify: true}); haptic(); render.keep = true; render(); } catch(e) { toast(e.message); } });
+  app.querySelectorAll("[data-u]").forEach(b => b.onclick = () => tg ? tg.openTelegramLink("https://t.me/" + b.dataset.u) : window.open("https://t.me/" + b.dataset.u));
+  app.querySelectorAll("[data-cp]").forEach(b => b.onclick = () => copy(b.dataset.cp));
+};
+
+// ---------- админ: редактор товара ----------
+VIEWS.edit = id => {
+  const src = id && byId(id), isNew = !src;
+  const it = src ? JSON.parse(JSON.stringify(src)) : {title:"", price:0, old_price:0, section:"", type:"", sizes:"", facts:[], description:"", photos:[], status:"active", private:{}};
   const p = it.private = it.private || {};
-  view = "edit"; header(false); back(true);
-  const allSecs = [...new Set([...SECTIONS, ...ITEMS.map(i => i.section).filter(Boolean)])];
+  const allSecs = [...new Set(["Женское", "Мужское", "Унисекс", ...ITEMS.map(i => i.section).filter(Boolean)])];
   const allTypes = [...new Set(ITEMS.map(i => i.type).filter(Boolean))].sort();
+  const pick = new Set(isNew ? [] : GROUPS.filter(g => g.items.includes(it.id)).map(g => g.id));
   app.innerHTML = `
-    <h1>${isNew ? "Новый товар" : "Редактирование · " + esc(it.id)}</h1>
-    <div class="h">Фото</div>
-    <div class="pgrid" id="pg"></div>
-    <p class="note">Первое фото — обложка. Стрелка ← двигает фото левее.</p>
-    <div class="h">Объявление</div>
-    <div class="box" style="margin-top:0">
-      <div><label class="lbl" for="e_t">Название (до 50 знаков)</label><input class="f" id="e_t" maxlength="50" value="${esc(it.title)}"></div>
-      <div class="two"><div><label class="lbl" for="e_p">Цена, ₽</label><input class="f" id="e_p" type="number" inputmode="numeric" step="10" value="${it.price || ""}"></div>
-        <div><label class="lbl" for="e_z">Размеры</label><input class="f" id="e_z" placeholder="S M L" value="${esc(it.sizes)}"></div></div>
-      <div class="two"><div><label class="lbl" for="e_s">Раздел</label><input class="f" id="e_s" list="dl_s" value="${esc(it.section)}"></div>
-        <div><label class="lbl" for="e_y">Тип</label><input class="f" id="e_y" list="dl_y" placeholder="Куртки" value="${esc(it.type)}"></div></div>
-      <datalist id="dl_s">${allSecs.map(s => `<option value="${esc(s)}">`).join("")}</datalist>
-      <datalist id="dl_y">${allTypes.map(s => `<option value="${esc(s)}">`).join("")}</datalist>
-      <div><span class="lbl">Статус</span><div class="seg" id="e_st">${Object.entries(STATUS).map(([k,v]) => `<button data-s="${k}" aria-pressed="${k===it.status}">${v}</button>`).join("")}</div></div>
-      <div><label class="lbl" for="e_f">Характеристики — по строке «Название: значение»</label><textarea class="f" id="e_f" placeholder="Ткань: хлопок 100%">${esc((it.facts || []).map(([k,v]) => k + ": " + v).join("\n"))}</textarea></div>
-      <div><label class="lbl" for="e_d">Описание</label><textarea class="f big" id="e_d">${esc(it.description)}</textarea></div>
-    </div>
-    <div class="h">Только для админов</div>
-    <div class="box" style="margin-top:0">
-      <div><label class="lbl" for="e_l">Ссылки на поставщика — по строке «Название | ссылка»</label><textarea class="f" id="e_l" placeholder="Pinduoduo | https://…">${esc((p.links || []).map(([n,u]) => n + " | " + u).join("\n"))}</textarea></div>
-      <div><label class="lbl" for="e_q">В заказе</label><input class="f" id="e_q" value="${esc(p.qty || "")}" placeholder="3 шт: 1M 2L"></div>
-      <div class="two"><div><label class="lbl" for="e_c">Закупка, ¥</label><input class="f" id="e_c" type="number" inputmode="decimal" value="${p.cny ?? ""}"></div>
-        <div><label class="lbl" for="e_k">Вес, кг</label><input class="f" id="e_k" type="number" inputmode="decimal" step="0.1" value="${p.kg ?? ""}"></div></div>
+    <button class="back" id="bk">← Назад</button>
+    <div class="h1">${isNew ? "Новый товар" : "Товар " + esc(it.id)}</div>
+    <span class="lbl">Фото · первое — обложка</span><div class="pgrid" id="pg"></div>
+    <label class="lbl" for="e_t">Название</label><input class="f" id="e_t" maxlength="60" value="${esc(it.title)}">
+    <div class="two"><div><label class="lbl" for="e_p">Цена, ₽</label><input class="f tn" id="e_p" type="number" inputmode="numeric" step="10" value="${it.price || ""}"></div>
+      <div><label class="lbl" for="e_o">Старая цена (скидка)</label><input class="f tn" id="e_o" type="number" inputmode="numeric" step="10" value="${it.old_price || ""}"></div></div>
+    <label class="lbl" for="e_z">Размеры через пробел</label><input class="f" id="e_z" placeholder="S M L" value="${esc(it.sizes)}">
+    <div class="two"><div><label class="lbl" for="e_s">Для кого</label><input class="f" id="e_s" list="dl_s" value="${esc(it.section)}"></div>
+      <div><label class="lbl" for="e_y">Тип</label><input class="f" id="e_y" list="dl_y" placeholder="Куртки" value="${esc(it.type)}"></div></div>
+    <datalist id="dl_s">${allSecs.map(s => `<option value="${esc(s)}">`).join("")}</datalist><datalist id="dl_y">${allTypes.map(s => `<option value="${esc(s)}">`).join("")}</datalist>
+    <span class="lbl">Группы</span><div class="seg" id="e_g">${GROUPS.map(g => `<button data-g="${g.id}" aria-pressed="${pick.has(g.id)}">${esc(g.name)}</button>`).join("") || '<span class="note">Групп пока нет</span>'}</div>
+    <span class="lbl">Статус</span><div class="seg" id="e_st">${Object.entries(STATUS).map(([k, v]) => `<button data-s="${k}" aria-pressed="${k === it.status}">${v}</button>`).join("")}</div>
+    <label class="lbl" for="e_f">Характеристики · строка «Название: значение»</label><textarea class="f" id="e_f" placeholder="Ткань: хлопок 100%">${esc((it.facts || []).map(([k, v]) => k + ": " + v).join("\n"))}</textarea>
+    <label class="lbl" for="e_d">Описание · строки с «•» станут списком</label><textarea class="f big" id="e_d">${esc(it.description)}</textarea>
+    <div class="adm"><div class="ttl">Только для админов</div>
+      <label class="lbl" for="e_l">Поставщик · строка «Название | ссылка»</label><textarea class="f" id="e_l" placeholder="Pinduoduo | https://…">${esc((p.links || []).map(([n, u]) => n + " | " + u).join("\n"))}</textarea>
+      <label class="lbl" for="e_q">В заказе</label><input class="f" id="e_q" value="${esc(p.qty || "")}" placeholder="3 шт: 1M 2L">
+      <div class="two"><div><label class="lbl" for="e_c">Закупка, ¥</label><input class="f tn" id="e_c" type="number" inputmode="decimal" value="${p.cny ?? ""}"></div>
+        <div><label class="lbl" for="e_k">Вес, кг</label><input class="f tn" id="e_k" type="number" inputmode="decimal" step="0.1" value="${p.kg ?? ""}"></div></div>
       <p class="note" id="e_cost"></p>
-      <div><label class="lbl" for="e_w">Заметка</label><input class="f" id="e_w" value="${esc(p.warn || "")}"></div>
+      <label class="lbl" for="e_w">Заметка</label><input class="f" id="e_w" value="${esc(p.warn || "")}">
     </div>
-    <div class="actions"><button class="btn pri" id="e_save">Сохранить</button>${isNew ? `<button class="btn" id="e_cancel">Отмена</button>` : `<button class="btn del" id="e_del">Удалить</button>`}</div>`;
+    <div class="stack" style="margin-top:18px"><button class="btn w" id="e_save">Сохранить</button>${isNew ? "" : `<button class="btn del" id="e_del">Удалить навсегда</button>`}</div>`;
+  $("bk").onclick = back;
   const drawPhotos = () => {
-    $("pg").innerHTML = it.photos.map((u, i) => `<div class="pcell ${i ? "" : "first"}"><img src="${esc(u)}" alt="">${i ? `<button class="l" data-i="${i}" aria-label="Левее">←</button>` : ""}<button class="x" data-i="${i}" aria-label="Убрать">×</button></div>`).join("") + `<label class="padd" for="file" id="padd">+</label>`;
+    $("pg").innerHTML = it.photos.map((u, i) => `<div class="pcell ${i ? "" : "first"}"><img src="${esc(u)}" alt="">${i ? `<button class="l" data-i="${i}" aria-label="Левее">←</button>` : ""}<button class="x" data-i="${i}" aria-label="Убрать">×</button></div>`).join("") + `<label class="padd" for="file">+</label>`;
     $("pg").querySelectorAll(".x").forEach(b => b.onclick = () => { it.photos.splice(+b.dataset.i, 1); drawPhotos(); });
-    $("pg").querySelectorAll(".l").forEach(b => b.onclick = () => { const i = +b.dataset.i; [it.photos[i-1], it.photos[i]] = [it.photos[i], it.photos[i-1]]; drawPhotos(); });
+    $("pg").querySelectorAll(".l").forEach(b => b.onclick = () => { const i = +b.dataset.i; [it.photos[i - 1], it.photos[i]] = [it.photos[i], it.photos[i - 1]]; drawPhotos(); });
   };
   drawPhotos();
   $("file").value = "";
   $("file").onchange = async e => {
-    const files = [...e.target.files]; if (!files.length) return;
+    const files = [...e.target.files];
     for (const [n, f] of files.entries()) {
       toast(`Загружаю фото ${n + 1} из ${files.length}…`);
-      try { const {url} = await call("upload", {data: await shrink(f)}); it.photos.push(url); drawPhotos(); }
-      catch(err) { toast("Фото не загрузилось: " + err.message); }
+      try { const {url} = await call("upload", {data: await shrink(f)}); it.photos.push(url); drawPhotos(); } catch(err) { toast("Фото не загрузилось: " + err.message); }
     }
-    toast("Фото добавлены");
+    if (files.length) toast("Фото добавлены");
   };
   const costNote = () => { const c = +$("e_c").value, k = +$("e_k").value; $("e_cost").textContent = c ? `Под ключ ≈ ${rub(Math.round((c * 12 + k * 480) / 10) * 10)} (¥ × 12 + карго 480 ₽/кг)` : ""; };
   $("e_c").oninput = $("e_k").oninput = costNote; costNote();
-  $("e_st").querySelectorAll("button").forEach(b => b.onclick = () => { it.status = b.dataset.s; $("e_st").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b)); });
+  app.querySelectorAll("#e_st button").forEach(b => b.onclick = () => { it.status = b.dataset.s; app.querySelectorAll("#e_st button").forEach(x => x.setAttribute("aria-pressed", x === b)); });
+  app.querySelectorAll("#e_g button").forEach(b => b.onclick = () => { const g = +b.dataset.g; pick.has(g) ? pick.delete(g) : pick.add(g); b.setAttribute("aria-pressed", pick.has(g)); });
   const doSave = async () => {
     const title = $("e_t").value.trim(), price = parseInt($("e_p").value, 10);
-    if (!title) { toast("Введите название"); return; }
-    if (!(price > 0)) { toast("Укажите цену"); return; }
-    if (!it.photos.length) { toast("Добавьте хотя бы одно фото"); return; }
+    if (!title) return toast("Введите название");
+    if (!(price > 0)) return toast("Укажите цену");
+    if (!it.photos.length) return toast("Добавьте хотя бы одно фото");
     const cny = parseFloat($("e_c").value) || 0, kg = parseFloat($("e_k").value) || 0;
-    Object.assign(it, {title, price, sizes: $("e_z").value.trim(), section: $("e_s").value.trim(), type: $("e_y").value.trim(), description: $("e_d").value,
+    Object.assign(it, {title, price, old_price: parseInt($("e_o").value, 10) || 0, sizes: $("e_z").value.trim(), section: $("e_s").value.trim(), type: $("e_y").value.trim(), description: $("e_d").value,
       facts: $("e_f").value.split("\n").map(l => l.split(/:(.*)/s).map(s => s.trim())).filter(([k, v]) => k && v).map(([k, v]) => [k, v])});
     Object.assign(it.private, {links: $("e_l").value.split("\n").map(l => l.split("|").map(s => s.trim())).filter(([n, u]) => n && u).map(([n, u]) => [n, u]),
       qty: $("e_q").value.trim(), cny, kg, cost: cny ? Math.round((cny * 12 + kg * 480) / 10) * 10 : 0, warn: $("e_w").value.trim()});
-    if (tg) tg.MainButton.showProgress();
+    $("e_save").disabled = true;
     try {
       const saved = await save(it);
-      const g = isNew && GROUPS.find(x => String(x.id) === grp);
-      if (g && !g.items.includes(saved.id)) { const {group} = await call("group_save", {group: {...g, items: [...g.items, saved.id]}}); Object.assign(g, group); }
-      haptic(); toast("Сохранено"); open(saved.id);
-    }
-    catch(e) { toast(e.message); haptic("error"); }
-    finally { if (tg) tg.MainButton.hideProgress(); }
+      for (const g of GROUPS) {
+        const want = pick.has(g.id), has = g.items.includes(saved.id);
+        if (want !== has) { const {group} = await call("group_save", {group: {...g, items: want ? [...g.items, saved.id] : g.items.filter(x => x !== saved.id)}}); Object.assign(g, group); }
+      }
+      haptic(); toast("Сохранено"); go("product", saved.id, true);
+    } catch(e) { toast(e.message); haptic("error"); $("e_save").disabled = false; }
   };
-  $("e_save").onclick = doSave;
-  setMain("Сохранить", doSave);
-  if ($("e_cancel")) $("e_cancel").onclick = feed;
+  $("e_save").onclick = doSave; setMain("Сохранить", doSave);
   if ($("e_del")) { let armed = false; $("e_del").onclick = async () => {
-    if (!armed) { armed = true; $("e_del").textContent = "Точно удалить?"; setTimeout(() => { armed = false; if ($("e_del")) $("e_del").textContent = "Удалить"; }, 3000); return; }
-    try { await call("delete", {id: it.id}); ITEMS = ITEMS.filter(x => x.id !== it.id); haptic(); toast("Удалено"); feed(); } catch(e) { toast(e.message); }
+    if (!armed) { armed = true; $("e_del").textContent = "Точно удалить? Лучше в архив"; setTimeout(() => { armed = false; if ($("e_del")) $("e_del").textContent = "Удалить навсегда"; }, 3500); return; }
+    try { await call("delete", {id: it.id}); ITEMS = ITEMS.filter(x => x.id !== it.id); haptic(); toast("Удалено"); tab("home"); } catch(e) { toast(e.message); }
   }; }
-  window.scrollTo(0, 0);
-}
+};
 async function save(it){
   const {item} = await call("save", {item: it});
   const i = ITEMS.findIndex(x => x.id === item.id);
   if (i >= 0) ITEMS[i] = item; else ITEMS.push(item);
   return item;
 }
-// фото уменьшаем на телефоне до 1280 px, чтобы загрузка была быстрой
+// фото уменьшаем на телефоне до 1600 px, чтобы загрузка была быстрой
 async function shrink(file){
   const img = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = URL.createObjectURL(file); });
-  const k = Math.min(1, 1280 / Math.max(img.naturalWidth, img.naturalHeight));
+  const k = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
   const c = document.createElement("canvas"); c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
-  c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-  URL.revokeObjectURL(img.src);
+  c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(img.src);
   return c.toDataURL("image/jpeg", 0.86).split(",")[1];
 }
+
+// ---------- админ: группы ----------
+VIEWS.groups = () => {
+  app.innerHTML = `<button class="back" id="bk">← Назад</button><div class="h1">Группы</div>
+    <p class="note">Группы — это категории в каталоге и меню. Одна вещь может быть в нескольких группах.</p>
+    <div>${GROUPS.map((g, i) => `<div class="grow">
+      <button class="gname" data-e="${g.id}">${esc(g.name)}<span>${g.items.filter(id => byId(id) && byId(id).status !== "hidden").length} ${plural(g.items.length, "товар", "товара", "товаров")}</span></button>
+      ${i ? `<button class="gico" data-up="${i}" aria-label="Выше">↑</button>` : ""}<button class="gico del" data-d="${g.id}" aria-label="Удалить">✕</button></div>`).join("") || '<div class="empty">Групп пока нет</div>'}</div>
+    <div style="height:16px"></div><button class="btn w" id="gnew">+ Новая группа</button>`;
+  $("bk").onclick = back;
+  $("gnew").onclick = () => go("group", null);
+  app.querySelectorAll("[data-e]").forEach(b => b.onclick = () => go("group", +b.dataset.e));
+  app.querySelectorAll("[data-up]").forEach(b => b.onclick = async () => {
+    const i = +b.dataset.up; [GROUPS[i - 1], GROUPS[i]] = [GROUPS[i], GROUPS[i - 1]];
+    try { await Promise.all(GROUPS.map((g, k) => g.sort === k ? null : (g.sort = k, call("group_save", {group: g})))); } catch(e) { toast(e.message); }
+    render.keep = true; render();
+  });
+  app.querySelectorAll("[data-d]").forEach(b => { let armed = false; b.onclick = async () => {
+    if (!armed) { armed = true; b.textContent = "Удалить?"; b.classList.add("wide"); setTimeout(() => { armed = false; b.textContent = "✕"; b.classList.remove("wide"); }, 3000); return; }
+    try { await call("group_delete", {id: +b.dataset.d}); GROUPS = GROUPS.filter(g => g.id !== +b.dataset.d); haptic(); toast("Группа удалена, товары остались"); render.keep = true; render(); } catch(e) { toast(e.message); }
+  }; });
+};
+VIEWS.group = gid => {
+  const src = GROUPS.find(g => g.id === gid);
+  const g = src ? {...src, items: [...src.items]} : {name: "", items: [], sort: GROUPS.length};
+  const list = [...ITEMS].sort((a, b) => (a.status === "hidden") - (b.status === "hidden"));
+  app.innerHTML = `<button class="back" id="bk">← Назад</button><div class="h1">${src ? "Группа" : "Новая группа"}</div>
+    <label class="lbl" for="g_n">Название</label><input class="f" id="g_n" maxlength="30" placeholder="Например: Пуховики" value="${esc(g.name)}">
+    <span class="lbl">Товары · <span id="g_c"></span></span>
+    <div>${list.map(it => `<label class="gitem"><input type="checkbox" value="${esc(it.id)}" ${g.items.includes(it.id) ? "checked" : ""}><img src="${esc(it.photos[0] || "")}" alt=""><span><span class="t">${esc(it.title)}</span><span class="note">${esc(it.id)} · ${rub(it.price)}${it.status === "hidden" ? " · архив" : ""}</span></span></label>`).join("")}</div>
+    <div style="height:16px"></div><button class="btn w" id="g_s">Сохранить группу</button>`;
+  $("bk").onclick = back;
+  const cnt = () => $("g_c").textContent = "выбрано " + app.querySelectorAll(".gitem input:checked").length;
+  app.querySelectorAll(".gitem input").forEach(c => c.onchange = cnt); cnt();
+  const doSave = async () => {
+    g.name = $("g_n").value.trim(); if (!g.name) return toast("Введите название группы");
+    g.items = [...app.querySelectorAll(".gitem input:checked")].map(c => c.value);
+    try { const {group} = await call("group_save", {group: g}); const i = GROUPS.findIndex(x => x.id === group.id); if (i >= 0) GROUPS[i] = group; else GROUPS.push(group); haptic(); toast("Группа сохранена"); back(); }
+    catch(e) { toast(e.message); }
+  };
+  $("g_s").onclick = doSave; setMain("Сохранить группу", doSave);
+};
+
+// ---------- админ: главная и тексты ----------
+VIEWS.hero = () => {
+  const h = {...HERO_DEFAULT, ...(SET.hero || {})};
+  app.innerHTML = `<button class="back" id="bk">← Назад</button><div class="h1">Блок дропа</div>
+    <span class="lbl">Фоновое фото · если пусто, берётся первая вещь</span><div class="pgrid" id="hp"></div>
+    <label class="lbl" for="h_d">Дата или подпись сверху</label><input class="f" id="h_d" value="${esc(h.date)}" placeholder="13.10.2026">
+    <label class="lbl" for="h_t">Заголовок</label><input class="f" id="h_t" value="${esc(h.title)}">
+    <label class="lbl" for="h_s">Подзаголовок</label><input class="f" id="h_s" value="${esc(h.sub)}">
+    <label class="lbl" for="h_x">Текст</label><textarea class="f big" id="h_x">${esc(h.text)}</textarea>
+    <label class="lbl" for="h_b">Кнопка</label><input class="f" id="h_b" value="${esc(h.button)}">
+    <div style="height:16px"></div><button class="btn w" id="h_save">Сохранить</button>`;
+  $("bk").onclick = back;
+  const drawImg = () => { $("hp").innerHTML = (h.image ? `<div class="pcell"><img src="${esc(h.image)}" alt=""><button class="x" id="hx" aria-label="Убрать">×</button></div>` : "") + `<label class="padd" for="file">+</label>`; if ($("hx")) $("hx").onclick = () => { h.image = ""; drawImg(); }; };
+  drawImg();
+  $("file").value = ""; $("file").onchange = async e => { const f = e.target.files[0]; if (!f) return; toast("Загружаю фото…"); try { h.image = (await call("upload", {data: await shrink(f)})).url; drawImg(); toast("Фото загружено"); } catch(err) { toast(err.message); } };
+  const doSave = async () => {
+    Object.assign(h, {date: $("h_d").value.trim(), title: $("h_t").value.trim() || "EON", sub: $("h_s").value.trim(), text: $("h_x").value, button: $("h_b").value.trim()});
+    try { await call("settings_save", {key: "hero", value: h}); SET.hero = h; haptic(); toast("Сохранено"); tab("home"); } catch(e) { toast(e.message); }
+  };
+  $("h_save").onclick = doSave; setMain("Сохранить", doSave);
+};
+VIEWS.texts = () => {
+  const pages = {...PAGE_DEFAULT, ...(SET.pages || {})};
+  app.innerHTML = `<button class="back" id="bk">← Назад</button><div class="h1">Тексты</div>
+    ${Object.entries(PAGES).map(([k, v]) => `<label class="lbl" for="t_${k}">${v}</label><textarea class="f big" id="t_${k}">${esc(pages[k])}</textarea>`).join("")}
+    <div style="height:16px"></div><button class="btn w" id="t_save">Сохранить</button>`;
+  $("bk").onclick = back;
+  const doSave = async () => {
+    const v = Object.fromEntries(Object.keys(PAGES).map(k => [k, $("t_" + k).value]));
+    try { await call("settings_save", {key: "pages", value: v}); SET.pages = v; haptic(); toast("Сохранено"); back(); } catch(e) { toast(e.message); }
+  };
+  $("t_save").onclick = doSave; setMain("Сохранить", doSave);
+};
 async function importSeed(){
   const b = $("imp"); b.disabled = true; b.textContent = "Загружаю…";
   try {
@@ -460,55 +835,33 @@ async function importSeed(){
     const starter = [["Женское", x => x.section === "Женское"], ["Мужское", x => x.section === "Мужское"], ["Унисекс", x => x.section === "Унисекс"],
       ["Куртки и пуховики", x => x.type === "Куртки" || x.type === "Пуховики"], ["Низ", x => ["Брюки", "Джинсы", "Леггинсы"].includes(x.type)]];
     if (!GROUPS.length) for (const [k, [name, f]] of starter.entries()) await call("group_save", {group: {name, sort: k, items: seed.filter(f).map(x => x.id)}});
-    const r = await call("items"); ITEMS = r.items; GROUPS = r.groups || []; haptic(); toast(`Загружено: ${seed.length}`); feed();
+    await loadAll(); haptic(); toast(`Загружено: ${seed.length}`); tab("home");
   } catch(e) { toast(e.message); b.disabled = false; b.textContent = "Загрузить каталог"; }
 }
 
-// ---------- админ: заказы ----------
-async function loadOrders(){
-  try { ORDERS = (await call("orders")).orders || []; } catch(_) { ORDERS = []; }
-  const n = ORDERS.filter(o => o.status === "new").length;
-  $("nb").hidden = !n; $("nb").textContent = n;
-}
-async function orders(){
-  app.innerHTML = `<div class="spin">Загрузка…</div>`;
-  await loadOrders();
-  if (tab !== "orders" || view !== "feed") return;
-  app.innerHTML = ORDERS.length ? ORDERS.map(o => { const it = ITEMS.find(x => x.id === o.item_id) || {photos:[], title:o.item_id}; return `
-    <div class="ord ${o.status}">
-      <img src="${esc(it.photos[0] || "")}" alt="">
-      <div><div class="t">${esc(it.title)}</div>
-        <div class="meta">${esc(o.item_id)}${o.size ? " · размер " + esc(o.size) : ""} · ${new Date(o.created_at).toLocaleString("ru-RU", {day:"numeric", month:"short", hour:"2-digit", minute:"2-digit"})}</div>
-        <div>${esc(o.user_name)}</div>${o.comment ? `<div class="note">«${esc(o.comment)}»</div>` : ""}
-        <div class="row">${o.username ? `<button data-u="${esc(o.username)}">Написать</button>` : ""}<button data-id="${o.id}" data-s="${o.status === "new" ? "done" : "new"}">${o.status === "new" ? "✓ Обработан" : "Вернуть в новые"}</button></div>
-      </div></div>`; }).join("") + `<p class="note" style="margin-top:14px">Ответить клиенту можно и в чате с ботом: нажмите «Ответить» на сообщение о заказе.</p>`
-    : `<p class="note">Заказов пока нет. Когда клиент нажмёт «Заказать», заявка появится здесь и придёт вам в бота.</p>`;
-  app.querySelectorAll("[data-u]").forEach(b => b.onclick = () => tg ? tg.openTelegramLink("https://t.me/" + b.dataset.u) : window.open("https://t.me/" + b.dataset.u));
-  app.querySelectorAll("[data-id]").forEach(b => b.onclick = async () => { try { await call("order_status", {id: +b.dataset.id, status: b.dataset.s}); orders(); } catch(e) { toast(e.message); } });
-}
-
 // ---------- запуск ----------
+async function loadAll(){
+  const r = await call("items"); ITEMS = r.items || []; GROUPS = r.groups || []; SET = r.settings || {};
+}
 if (tg) {
   tg.ready(); tg.expand();
-  try { tg.setHeaderColor("bg_color"); } catch(_) {}
-  tg.BackButton.onClick(() => { if (view === "edit" && current) open(current.id); else if (view === "order") open(current.id); else if (view === "group") groupsScreen(); else feed(); });
+  try { tg.setHeaderColor("#0b0b0c"); tg.setBackgroundColor("#0b0b0c"); if (tg.setBottomBarColor) tg.setBottomBarColor("#0b0b0c"); } catch(_) {}
+  try { if (tg.disableVerticalSwipes) tg.disableVerticalSwipes(); } catch(_) {}
+  tg.BackButton.onClick(back);
 }
-$("q").addEventListener("input", e => { query = e.target.value.trim().toLowerCase(); feed(); });
-$("add").onclick = () => { current = null; edit(null); };
-$("tabs").querySelectorAll("button").forEach(b => b.onclick = () => { tab = b.dataset.t; $("tabs").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b)); feed(); });
-
 (async () => {
+  [CART, LIKES, CONTACT] = await Promise.all([store.get("eon_cart"), store.get("eon_likes"), store.get("eon_contact")]);
+  CART = Array.isArray(CART) ? CART : []; LIKES = Array.isArray(LIKES) ? LIKES : []; CONTACT = CONTACT || {};
   try {
-    const me = await call("me"); ADMIN = me.admin; USER = me.user;
-    const r = await call("items"); ITEMS = r.items || []; GROUPS = r.groups || [];
+    const me = await call("me"); ADMIN = me.admin; USER = me.user || (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) || null;
+    await loadAll();
   } catch(e) {
     // сервер недоступен — показываем каталог из файла, только просмотр
-    try { const seed = await (await fetch("seed.json")).json(); ITEMS = seed.map(({private: _, ...it}) => it);
+    try { const seed = await (await fetch("seed.json")).json(); ITEMS = seed.map(({private: _, ...it}) => ({old_price: 0, ...it}));
       GROUPS = ["Женское", "Мужское", "Унисекс"].map((name, id) => ({id, name, items: seed.filter(x => x.section === name).map(x => x.id)})); } catch(_) {}
   }
-  $("add").hidden = !ADMIN; $("tabs").hidden = !ADMIN;
-  if (ADMIN) loadOrders();
-  feed();
+  badges(); loadOrders();
+  stack = [["home"]]; render();
 })();
 </script>
 </body>
