@@ -88,7 +88,7 @@ if (!recv) {
       const j = await r.json();
       if (j.error) throw new Error(j.error);
       st.innerHTML = `<span class="ok">✓ Черновик ${j.id} создан</span>`;
-      document.getElementById("res").innerHTML = `<div class="box"><b>${j.title.replace(/</g, "&lt;")}</b><br>${j.photos} фото · цена ${Number(j.price).toLocaleString("ru-RU")} ₽${j.translated ? "" : '<br><span class="bad">Без перевода — нет ключа ProxyAPI на сервере или пустой баланс</span>'}<p class="mut">Проверьте и опубликуйте в боте: Каталог → меню → Черновики. Это окно можно закрыть.</p></div>`;
+      document.getElementById("res").innerHTML = `<div class="box"><b>${j.title.replace(/</g, "&lt;")}</b><br>${j.photos} фото · цена ${Number(j.price).toLocaleString("ru-RU")} ₽${j.dict ? '<br><span class="mut">Текст собран по словарю — проверьте название и описание</span>' : ""}<p class="mut">Проверьте и опубликуйте в боте: Каталог → меню → Черновики. Это окно можно закрыть.</p></div>`;
     } catch (err) { st.innerHTML = `<span class="bad">Не получилось: ${String(err.message || err).replace(/</g, "&lt;")}</span>`; busy = false; }
   });
 }
