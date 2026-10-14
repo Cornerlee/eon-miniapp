@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EP · закладка импорта</title>
+<link rel="icon" href="icon.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600&display=swap">
+<style>
+/* Две роли одной страницы: без ?recv — инструкция и кнопка-закладка; с ?recv — принимает данные товара от закладки и создаёт черновик */
+:root{--bg:#0b0b0c;--card:#151517;--fg:#f3f2ef;--muted:#8d8c88;--line:#2a2a2d;--ok:#5cc28a;--bad:#ff5a4f;color-scheme:dark}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 "Onest",system-ui,sans-serif;padding:40px 20px}
+main{max-width:620px;margin:0 auto}
+h1{font-size:22px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;margin:0 0 6px}
+.mut{color:var(--muted)}
+ol{padding-left:20px}ol li{margin:8px 0}
+.bm{display:inline-block;margin:18px 0;padding:14px 22px;background:var(--fg);color:var(--bg);font-weight:600;letter-spacing:.14em;text-transform:uppercase;text-decoration:none;border-radius:2px;cursor:grab}
+.box{border:1px solid var(--line);background:var(--card);padding:16px;margin-top:18px}
+.ok{color:var(--ok)}.bad{color:var(--bad)}
+img.th{width:72px;height:72px;object-fit:cover;background:#fff;margin:4px}
+</style>
+</head>
+<body><main id="m"></main>
+<script src="config.js"></script>
+<script>
+const KEY = location.hash.slice(1);
+const m = document.getElementById("m");
+const recv = new URLSearchParams(location.search).has("recv");
+
+// код, который выполняется на странице товара Pinduoduo или 1688 (в вашем браузере)
+function grab(){
+  var h = document.documentElement.innerHTML, u = location.href, src = /1688\.com/.test(u) ? "1688" : "pdd";
+  var imgs = [], prices = [], props = [], skus = [], title = "";
+  try {
+    var g = window.rawData && rawData.store && rawData.store.initDataObj && rawData.store.initDataObj.goods;
+    if (g) {
+      title = g.goodsName || "";
+      (g.topGallery || []).concat(g.detailGallery || []).forEach(function(x){ imgs.push(typeof x == "string" ? x : (x.url || x.imgUrl)); });
+      (g.skus || []).forEach(function(s){ var p = Number(s.groupPrice || s.normalPrice || s.price) || 0; if (p > 1000 && p % 1 === 0) p = p / 100; skus.push({spec: (s.specs || []).map(function(z){ return z.spec_value || z.specValue; }).join(" / "), price: p}); if (p) prices.push(p); });
+      (g.goodsProperty || []).forEach(function(p){ props.push([p.key, (p.values || []).join(", ")]); });
+    }
+  } catch (e) {}
+  if (!title) title = (document.querySelector('meta[property="og:title"]') || {}).content || (document.querySelector("h1") || {}).innerText || document.title;
+  document.querySelectorAll("img").forEach(function(i){ var s = i.currentSrc || i.src; if (s && (i.naturalWidth >= 350 || i.width >= 250)) imgs.push(s); });
+  (h.match(/https?:\/\/[^"'\s()<>]+?(?:alicdn\.com\/img\/ibank|pddpic\.com|yangkeduo\.com)[^"'\s()<>]*?\.(?:jpe?g|png|webp)/gi) || []).forEach(function(x){ imgs.push(x); });
+  var seen = {}, clean = [];
+  imgs.forEach(function(x){
+    if (!x || /avatar|icon|logo|sprite|tps-|\.gif/i.test(x)) return;
+    x = x.replace(/^\/\//, "https://").replace(/(\.(?:jpe?g|png))_[^\/]*$/i, "$1").replace(/\.\d+x\d+(?:q\d+)?\.jpg$/i, "").split("?")[0];
+    if (!seen[x]) { seen[x] = 1; clean.push(x); }
+  });
+  if (!prices.length) (h.match(/"(?:price|discountPrice|priceDisplay|beginPrice)"\s*:\s*"?(\d+(?:\.\d+)?)/g) || []).forEach(function(s){ var n = parseFloat(s.replace(/[^\d.]/g, "")); if (n > 0) prices.push(n); });
+  if (!props.length) document.querySelectorAll("table tr, .offer-attr-item, .attribute-item").forEach(function(r){ var c = r.innerText.split(/\t|\n|：|:/).map(function(s){ return s.trim(); }).filter(Boolean); if (c.length >= 2 && c[0].length < 20) props.push([c[0], c.slice(1).join(" ")]); });
+  return {source: src, url: u.split("#")[0], title: String(title).trim(), images: clean.slice(0, 20), prices: prices, skus: skus.slice(0, 80), props: props.slice(0, 40), text: (document.body.innerText || "").slice(0, 4000)};
+}
+
+if (!recv) {
+  // страница с кнопкой-закладкой
+  const receiver = location.origin + location.pathname + "?recv=1#" + KEY;
+  const code = "javascript:" + encodeURIComponent("(function(){var d=(" + grab.toString() + ")();var w=window.open(" + JSON.stringify(receiver) + ",'ep_import','width=520,height=640');if(!w){alert('Разрешите всплывающие окна для этого сайта');return;}var n=0,t=setInterval(function(){try{w.postMessage({ep:d},'*')}catch(e){}if(++n>40)clearInterval(t)},500);window.addEventListener('message',function(e){if(e.data&&e.data.ep_ok)clearInterval(t)});})();");
+  m.innerHTML = KEY ? `
+    <h1>Закладка «→ EP»</h1>
+    <p class="mut">Импорт товара с Pinduoduo и 1688 в черновики магазина EP.</p>
+    <a class="bm" id="bm" href="#">→ EP</a>
+    <ol>
+      <li>Покажите панель закладок: <b>Ctrl + Shift + B</b>.</li>
+      <li>Перетащите белую кнопку <b>«→ EP»</b> на панель закладок мышкой.</li>
+      <li>Откройте товар на Pinduoduo (нужен вход) или 1688 и дождитесь, пока загрузятся фото.</li>
+      <li>Нажмите закладку «→ EP». Откроется маленькое окно — через 10–30 секунд там появится готовый черновик.</li>
+      <li>Проверьте и опубликуйте его в боте: Каталог → меню → <b>Черновики</b>.</li>
+    </ol>
+    <p class="mut">Ключ внутри закладки — как пароль: никому её не пересылайте. Новый ключ — команда <b>/key</b> в боте, старая закладка после этого перестанет работать.</p>`
+    : `<h1>Нет ключа</h1><p class="mut">Отправьте боту команду <b>/key</b> и откройте ссылку из ответа.</p>`;
+  if (KEY) { const a = document.getElementById("bm"); a.href = code; a.onclick = e => { e.preventDefault(); alert("Не нажимайте здесь — перетащите кнопку на панель закладок."); }; }
+} else {
+  // окно-приёмник: получает данные от закладки и создаёт черновик на сервере
+  m.innerHTML = `<h1>Импорт в EP</h1><p class="mut" id="st">Жду данные со страницы товара…</p><div id="res"></div>`;
+  let busy = false;
+  window.addEventListener("message", async e => {
+    if (!e.data || !e.data.ep || busy) return;
+    busy = true;
+    try { e.source.postMessage({ep_ok: 1}, "*"); } catch (_) {}
+    const d = e.data.ep, st = document.getElementById("st");
+    st.innerHTML = `Нашёл: <b>${(d.title || "").replace(/</g, "&lt;").slice(0, 80)}</b><br>${d.images.length} фото · цены: ${d.prices.slice(0, 5).join(", ") || "не нашёл"}<br>Загружаю фото и перевожу… 10–30 секунд.`;
+    try {
+      const r = await fetch(window.EON_API, {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({action: "import_draft", token: KEY, data: d})});
+      const j = await r.json();
+      if (j.error) throw new Error(j.error);
+      st.innerHTML = `<span class="ok">✓ Черновик ${j.id} создан</span>`;
+      document.getElementById("res").innerHTML = `<div class="box"><b>${j.title.replace(/</g, "&lt;")}</b><br>${j.photos} фото · цена ${Number(j.price).toLocaleString("ru-RU")} ₽${j.translated ? "" : '<br><span class="bad">Без перевода — нет ключа ProxyAPI на сервере или пустой баланс</span>'}<p class="mut">Проверьте и опубликуйте в боте: Каталог → меню → Черновики. Это окно можно закрыть.</p></div>`;
+    } catch (err) { st.innerHTML = `<span class="bad">Не получилось: ${String(err.message || err).replace(/</g, "&lt;")}</span>`; busy = false; }
+  });
+}
+</script>
+</body>
+</html>
