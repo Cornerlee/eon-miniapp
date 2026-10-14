@@ -529,13 +529,15 @@ function drawMenu(){
       <button class="mi" data-go="groups">Группы (категории)</button>
       <button class="mi" data-grp="arch">Архив</button>
       <button class="mi" data-go="hero">Главная: блок дропа</button>
-      <button class="mi" data-go="texts">Тексты: о нас, контакты, вопросы</button>` : ""}
+      <button class="mi" data-go="texts">Тексты: о нас, контакты, вопросы</button>
+      <button class="mi" id="maip">Поставить ИИ-фото первыми</button>` : ""}
     </div>`;
   $("mx").onclick = closeDrawer;
   $("mcat").onclick = () => { $("msub").hidden = !$("msub").hidden; };
   $("menu").querySelectorAll("[data-go]").forEach(b => b.onclick = () => { closeDrawer(); b.dataset.go === "search" ? go("catalog", {search:true}) : go(b.dataset.go); });
   $("menu").querySelectorAll("[data-grp]").forEach(b => b.onclick = () => { closeDrawer(); go("catalog", {grp: b.dataset.grp}); });
   $("menu").querySelectorAll("[data-page]").forEach(b => b.onclick = () => { closeDrawer(); go("page", b.dataset.page); });
+  if ($("maip")) $("maip").onclick = applyAiPhotos;
 }
 $("bCart").onclick = openCart;
 $("bMenu").onclick = () => { drawMenu(); openDrawer("menu"); };
@@ -852,6 +854,24 @@ VIEWS.texts = () => {
   };
   $("t_save").onclick = doSave; setMain("Сохранить", doSave);
 };
+// ИИ-фото лежат в папке ai/ рядом с приложением, список — в ai.json. Ставим их первыми, фото поставщика оставляем после
+async function applyAiPhotos(){
+  const b = $("maip"); b.disabled = true;
+  try {
+    const man = await (await fetch("ai.json", {cache: "no-store"})).json();
+    let n = 0;
+    for (const [id, urls] of Object.entries(man)) {
+      const it = byId(id); if (!it) continue;
+      const ai = urls.map(u => new URL(u, location.href).href);
+      const photos = [...ai, ...it.photos.filter(p => !/\/ai\/EON-/.test(p))];
+      if (JSON.stringify(photos) === JSON.stringify(it.photos)) continue;
+      b.textContent = `Ставлю фото… ${++n}`;
+      await save({...it, photos});
+    }
+    haptic(); toast(n ? `Готово: обновлено товаров — ${n}` : "Все ИИ-фото уже стоят"); closeDrawer(); tab("home");
+  } catch(e) { toast("Не получилось: " + e.message); }
+  finally { b.disabled = false; b.textContent = "Поставить ИИ-фото первыми"; }
+}
 async function importSeed(){
   const b = $("imp"); b.disabled = true; b.textContent = "Загружаю…";
   try {
