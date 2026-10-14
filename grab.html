@@ -23,7 +23,8 @@ img.th{width:72px;height:72px;object-fit:cover;background:#fff;margin:4px}
 <body><main id="m"></main>
 <script src="config.js"></script>
 <script>
-const KEY = location.hash.slice(1);
+// в адресе: #КЛЮЧ, а с телефона ещё и данные товара: #КЛЮЧ|{…}
+const H = location.hash.slice(1), KEY = H.split("|")[0], HDATA = H.includes("|") ? H.slice(H.indexOf("|") + 1) : "";
 const m = document.getElementById("m");
 const recv = new URLSearchParams(location.search).has("recv");
 
@@ -60,39 +61,78 @@ function grab(){
 if (!recv) {
   // страница с кнопкой-закладкой
   const receiver = location.origin + location.pathname + "?recv=1#" + KEY;
-  const code = "javascript:" + encodeURIComponent("(function(){var d=(" + grab.toString() + ")();var w=window.open(" + JSON.stringify(receiver) + ",'ep_import','width=520,height=640');if(!w){alert('Разрешите всплывающие окна для этого сайта');return;}var n=0,t=setInterval(function(){try{w.postMessage({ep:d},'*')}catch(e){}if(++n>40)clearInterval(t)},500);window.addEventListener('message',function(e){if(e.data&&e.data.ep_ok)clearInterval(t)});})();");
+  // на компьютере — маленькое окно + postMessage; на телефоне всплывающие окна режут, поэтому уходим на страницу EP и несём данные в адресе
+  const body = "(function(){var d=(" + grab.toString() + ")();var R=" + JSON.stringify(receiver) + ";"
+    + "if(/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)){d.text=d.text.slice(0,3000);d.tables=(d.tables||'').slice(0,2000);location.href=R+'|'+encodeURIComponent(JSON.stringify(d));return;}"
+    + "var w=window.open(R,'ep_import','width=520,height=640');if(!w){location.href=R+'|'+encodeURIComponent(JSON.stringify(d));return;}"
+    + "var n=0,t=setInterval(function(){try{w.postMessage({ep:d},'*')}catch(e){}if(++n>40)clearInterval(t)},500);window.addEventListener('message',function(e){if(e.data&&e.data.ep_ok)clearInterval(t)});})();";
+  const code = "javascript:" + encodeURIComponent(body);
   m.innerHTML = KEY ? `
     <h1>Закладка «→ EP»</h1>
     <p class="mut">Импорт товара с Pinduoduo и 1688 в черновики магазина EP.</p>
+    <h2 style="font-size:15px;letter-spacing:.12em;text-transform:uppercase;margin:26px 0 4px">На компьютере</h2>
     <a class="bm" id="bm" href="#">→ EP</a>
     <ol>
       <li>Покажите панель закладок: <b>Ctrl + Shift + B</b>.</li>
       <li>Перетащите белую кнопку <b>«→ EP»</b> на панель закладок мышкой.</li>
-      <li>Откройте товар на Pinduoduo (нужен вход) или 1688 и дождитесь, пока загрузятся фото.</li>
-      <li>Нажмите закладку «→ EP». Откроется маленькое окно — через 10–30 секунд там появится готовый черновик.</li>
-      <li>Проверьте и опубликуйте его в боте: Каталог → меню → <b>Черновики</b>.</li>
+      <li>Откройте товар и нажмите закладку — откроется окошко с готовым черновиком.</li>
     </ol>
-    <p class="mut">Ключ внутри закладки — как пароль: никому её не пересылайте. Новый ключ — команда <b>/key</b> в боте, старая закладка после этого перестанет работать.</p>`
+    <h2 style="font-size:15px;letter-spacing:.12em;text-transform:uppercase;margin:26px 0 4px">На телефоне</h2>
+    <button class="bm" id="cpy" style="border:0;cursor:pointer">Скопировать код закладки</button>
+    <p class="mut" id="cpyok"></p>
+    <b>Android, Chrome</b>
+    <ol>
+      <li>Нажмите «Скопировать код закладки».</li>
+      <li>Добавьте эту страницу в закладки: ⋮ → ☆.</li>
+      <li>⋮ → Закладки → нажмите и удерживайте новую закладку → Изменить. Название: <b>EP</b>, в поле адреса удалите всё и вставьте скопированный код. Сохраните.</li>
+      <li>На странице товара нажмите на адресную строку, напишите <b>EP</b> и выберите закладку из подсказок (со звёздочкой).</li>
+    </ol>
+    <b>iPhone, Safari</b>
+    <ol>
+      <li>Нажмите «Скопировать код закладки».</li>
+      <li>Значок «Поделиться» → «Добавить закладку» → Сохранить.</li>
+      <li>Значок книжки → Изменить → нажмите на новую закладку. Название: <b>EP</b>, в поле адреса удалите всё и вставьте код. Готово.</li>
+      <li>На странице товара: значок книжки → <b>EP</b>.</li>
+    </ol>
+    <p class="mut">Товар открывайте в браузере, не в приложении: 1688 — m.1688.com или detail.1688.com, Pinduoduo — mobile.yangkeduo.com (там нужно войти в аккаунт). После нажатия закладки откроется страница EP с готовым черновиком, кнопкой «Назад» вернётесь к товару.</p>
+    <p class="mut">Ключ внутри закладки — как пароль: никому её не пересылайте. Новый ключ — команда <b>/key</b> в боте, старые закладки после этого перестанут работать.</p>`
     : `<h1>Нет ключа</h1><p class="mut">Отправьте боту команду <b>/key</b> и откройте ссылку из ответа.</p>`;
-  if (KEY) { const a = document.getElementById("bm"); a.href = code; a.onclick = e => { e.preventDefault(); alert("Не нажимайте здесь — перетащите кнопку на панель закладок."); }; }
+  if (KEY) {
+    const a = document.getElementById("bm"); a.href = code; a.onclick = e => { e.preventDefault(); alert("Не нажимайте здесь — перетащите кнопку на панель закладок."); };
+    document.getElementById("cpy").onclick = async () => {
+      const ok = document.getElementById("cpyok");
+      try { await navigator.clipboard.writeText(code); ok.textContent = "Скопировано ✓ Теперь вставьте код в адрес закладки."; }
+      catch (_) { const ta = document.createElement("textarea"); ta.value = code; ta.style.cssText = "width:100%;height:120px"; ok.after(ta); ta.select(); try { document.execCommand("copy"); ok.textContent = "Скопировано ✓"; } catch (e) { ok.textContent = "Не скопировалось — выделите текст ниже вручную."; } }
+    };
+  }
 } else {
-  // окно-приёмник: получает данные от закладки и создаёт черновик на сервере
+  // приёмник: получает данные от закладки (сообщением или в адресе) и создаёт черновик на сервере
   m.innerHTML = `<h1>Импорт в EP</h1><p class="mut" id="st">Жду данные со страницы товара…</p><div id="res"></div>`;
   let busy = false;
-  window.addEventListener("message", async e => {
-    if (!e.data || !e.data.ep || busy) return;
-    busy = true;
-    try { e.source.postMessage({ep_ok: 1}, "*"); } catch (_) {}
-    const d = e.data.ep, st = document.getElementById("st");
-    st.innerHTML = `Нашёл: <b>${(d.title || "").replace(/</g, "&lt;").slice(0, 80)}</b><br>${d.images.length} фото · цены: ${d.prices.slice(0, 5).join(", ") || "не нашёл"}<br>Загружаю фото и перевожу… 10–30 секунд.`;
+  const esc = t => String(t).replace(/</g, "&lt;");
+  async function importData(d, fromPhone){
+    if (busy) return; busy = true;
+    const st = document.getElementById("st");
+    st.innerHTML = `Нашёл: <b>${esc((d.title || "").slice(0, 80))}</b><br>${(d.images || []).length} фото · цены: ${(d.prices || []).slice(0, 5).join(", ") || "не нашёл"}<br>Загружаю фото и собираю описание… 10–30 секунд.`;
     try {
       const r = await fetch(window.EON_API, {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({action: "import_draft", token: KEY, data: d})});
       const j = await r.json();
       if (j.error) throw new Error(j.error);
       st.innerHTML = `<span class="ok">✓ Черновик ${j.id} создан</span>`;
-      document.getElementById("res").innerHTML = `<div class="box"><b>${j.title.replace(/</g, "&lt;")}</b><br>${j.photos} фото · цена ${Number(j.price).toLocaleString("ru-RU")} ₽${j.dict ? '<br><span class="mut">Текст собран по словарю — проверьте название и описание</span>' : ""}<p class="mut">Проверьте и опубликуйте в боте: Каталог → меню → Черновики. Это окно можно закрыть.</p></div>`;
-    } catch (err) { st.innerHTML = `<span class="bad">Не получилось: ${String(err.message || err).replace(/</g, "&lt;")}</span>`; busy = false; }
+      document.getElementById("res").innerHTML = `<div class="box"><b>${esc(j.title)}</b><br>${j.photos} фото · цена ${Number(j.price).toLocaleString("ru-RU")} ₽${j.dict ? '<br><span class="mut">Текст собран по словарю — проверьте название и описание</span>' : ""}<p class="mut">Проверьте и опубликуйте в боте: Каталог → меню → Черновики.</p>${fromPhone ? '<button class="bm" style="border:0;cursor:pointer" onclick="history.back()">← Назад к товару</button>' : '<p class="mut">Это окно можно закрыть.</p>'}</div>`;
+    } catch (err) { st.innerHTML = `<span class="bad">Не получилось: ${esc(err.message || err)}</span>`; busy = false; }
+  }
+  window.addEventListener("message", e => {
+    if (!e.data || !e.data.ep) return;
+    try { e.source.postMessage({ep_ok: 1}, "*"); } catch (_) {}
+    importData(e.data.ep, false);
   });
+  if (HDATA) {
+    let d = null;
+    try { d = JSON.parse(decodeURIComponent(HDATA)); } catch (_) {}
+    history.replaceState(null, "", location.pathname + "?recv=1#" + KEY);  // убираем данные из адреса
+    if (d) importData(d, true); else document.getElementById("st").innerHTML = '<span class="bad">Данные товара не дошли — попробуйте ещё раз</span>';
+  }
 }
 </script>
 </body>
