@@ -218,6 +218,8 @@ textarea.f.big{min-height:220px}
 .realbox .rr span{color:var(--muted)}
 .realbox .rr b{font-weight:500}
 .pc .real{font-size:10.5px;color:#c9a54a;margin-top:2px}
+.lnk{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;margin-top:6px}
+.lnk code{font-size:10.5px;color:#cfcdc8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .src{display:block;width:100%;text-align:left;padding:10px 0;border-bottom:1px solid var(--line);font-size:12px;color:#9cc4ff}
 .pgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
 .pcell{position:relative;aspect-ratio:1/1;background:#fff;overflow:hidden}
@@ -262,6 +264,9 @@ textarea.f.big{min-height:220px}
 <script>
 const tg = window.Telegram && window.Telegram.WebApp;
 const API = window.EON_API || "";
+const BOT = window.EON_BOT || "eepshop_bot";
+let BUY = null;  // id товара, если клиент пришёл по ссылке «Сразу заказ»
+const deepLink = (kind, id) => `https://t.me/${BOT}?startapp=${kind}_${id}`;
 const app = document.getElementById("app");
 const $ = id => document.getElementById(id);
 let ITEMS = [], GROUPS = [], SET = {}, ORDERS = [], ADMIN = false, USER = null;
@@ -398,6 +403,32 @@ async function saveHome(sections){
   await call("settings_save", {key: "home", value: {sections}});
   SET.home = {sections};
 }
+VIEWS.purchase = () => {
+  const lines = [...((SET.purchase && SET.purchase.lines) || [])].filter(l => byId(l.id));
+  const sum = lines.reduce((a, l) => { const p = byId(l.id).private || {}; a.cny += (p.cny || 0) * l.qty; a.kg += (p.kg || 0) * l.qty; a.n += l.qty; return a; }, {cny: 0, kg: 0, n: 0});
+  const cost = Math.round((sum.cny * 12 + sum.kg * 480) / 10) * 10;
+  app.innerHTML = `<button class="back" id="bk">← Назад</button><div class="h1">Закупка <small class="tn">${sum.n} шт.</small></div>
+    ${lines.length ? lines.map((l, i) => { const it = byId(l.id), p = it.private || {}; return `<div class="ord">
+      <div class="ln" style="margin-top:0"><img src="${esc(it.photos[0] || "")}" alt=""><div style="flex:1;min-width:0"><div class="up" style="font-size:10.5px">${esc(it.title)}</div>
+        <div class="note">${esc(it.id)} · ${[l.size, l.color].filter(Boolean).map(esc).join(" · ") || "без варианта"} · ¥${p.cny || "?"} за шт.</div></div></div>
+      ${(p.links || []).map(([n, u]) => `<button class="src" data-u="${esc(u)}">${esc(n)} ↗</button>`).join("") || '<p class="note bad">Нет ссылки на поставщика</p>'}
+      <div class="row"><div class="qty"><button data-q="${i}" data-d="-1" aria-label="Меньше">−</button><span class="tn">${l.qty}</span><button data-q="${i}" data-d="1" aria-label="Больше">+</button></div><button class="btn sm del" data-rm="${i}">Убрать</button></div>
+    </div>`; }).join("") : `<div class="empty">Закупка пуста — добавляйте вещи кнопкой «В закупку» в карточке товара</div>`}
+    ${lines.length ? `<div class="realbox" style="margin-top:14px"><div class="ttl">Итого по закупке</div>
+      <div class="rr"><span>Товар у поставщиков</span><b class="tn">¥${Math.round(sum.cny * 100) / 100} ≈ ${rub(Math.round(sum.cny * 12))}</b></div>
+      <div class="rr"><span>Вес примерно</span><b class="tn">${Math.round(sum.kg * 10) / 10} кг · карго ${rub(Math.round(sum.kg * 480))}</b></div>
+      <div class="rr"><span>Под ключ</span><b class="tn">${rub(cost)}</b></div></div>
+      <div class="stack" style="margin-top:12px"><button class="btn w" id="pcopy">Скопировать список для карго</button><button class="btn del" id="pclear">Очистить закупку</button></div>` : ""}`;
+  $("bk").onclick = back;
+  const store2 = async next => { try { await call("settings_save", {key: "purchase", value: {lines: next}}); SET.purchase = {lines: next}; render.keep = true; render(); } catch(e) { toast(e.message); } };
+  app.querySelectorAll("[data-q]").forEach(b => b.onclick = () => { const next = lines.map(x => ({...x})); const l = next[+b.dataset.q]; l.qty = Math.max(1, l.qty + +b.dataset.d); store2(next); });
+  app.querySelectorAll("[data-rm]").forEach(b => b.onclick = () => store2(lines.filter((_, i) => i !== +b.dataset.rm)));
+  app.querySelectorAll(".src").forEach(b => b.onclick = () => tg && tg.openLink ? tg.openLink(b.dataset.u) : window.open(b.dataset.u, "_blank"));
+  if ($("pcopy")) $("pcopy").onclick = () => copy(lines.map((l, i) => { const it = byId(l.id), p = it.private || {};
+    return `${i + 1}. ${it.title} (${it.id})\n${[l.color, l.size].filter(Boolean).join(", ")} — ${l.qty} шт × ¥${p.cny || "?"}\n${(p.links || []).map(([, u]) => u).join("\n")}`; }).join("\n\n")
+    + `\n\nИтого: ${sum.n} шт, ¥${Math.round(sum.cny * 100) / 100}, ~${Math.round(sum.kg * 10) / 10} кг`);
+  if ($("pclear")) { let armed = false; $("pclear").onclick = () => { if (!armed) { armed = true; $("pclear").textContent = "Точно очистить?"; setTimeout(() => { armed = false; if ($("pclear")) $("pclear").textContent = "Очистить закупку"; }, 3000); return; } store2([]); }; }
+};
 VIEWS.importhelp = () => {
   const mk = (SET.markup && SET.markup.x) || 1.8;
   app.innerHTML = `<button class="back" id="bk">← Назад</button><div class="h1">Импорт товаров</div>
@@ -592,31 +623,56 @@ VIEWS.product = id => {
     </dl>
     <div class="desc">${descHTML(it.description)}</div>
     ${sizes.length ? `<div class="sizes" id="sz">${sizes.map(s => `<button data-s="${esc(s)}" aria-pressed="${s === size}">${esc(s)}</button>`).join("")}</div>` : ""}
-    <div class="stack"><button class="btn w" id="add"></button><button class="btn" id="ask">Написать продавцу</button></div>
+    <div class="stack"><div class="two"><button class="btn w" id="add"></button><button class="btn w" id="buy">Купить сейчас</button></div><button class="btn" id="ask">Написать продавцу</button></div>
     ${ADMIN ? `<div class="adm"><div class="ttl">Для админов · ${esc(it.id)} · ${STATUS[it.status]}</div>
       <div class="two"><button class="btn sm" id="ed">Редактировать</button><button class="btn sm" id="arch">${it.status === "hidden" ? "Из архива" : "В архив"}</button></div>
       <div class="two" style="margin-top:8px"><button class="btn sm" id="sold">${it.status === "sold" ? "Снова в продаже" : "Продано"}</button><button class="btn sm" id="cp">Текст для Авито</button></div>
       <span class="lbl">Группы</span><div class="seg" id="igr">${GROUPS.map(g => `<button data-g="${g.id}" aria-pressed="${g.items.includes(it.id)}">${esc(g.name)}</button>`).join("") || '<span class="note">Групп нет</span>'}</div>
       ${p.qty ? `<span class="lbl">В заказе</span><div>${esc(p.qty)}</div>` : ""}
       ${p.warn ? `<p class="note bad">⚠ ${esc(p.warn)}</p>` : ""}
+      <span class="lbl">Ссылки для клиентов · канал, Авито, переписка</span>
+      ${[["p", "Товар"], ["o", "Сразу заказ"]].map(([k, v]) => `<div class="lnk"><span class="note">${v}</span><code>${esc(deepLink(k, it.id))}</code><button class="btn sm" data-copy="${esc(deepLink(k, it.id))}">Копировать</button></div>`).join("")}
+      <button class="btn sm" id="share" style="width:100%;margin-top:6px">Отправить ссылку в чат или канал</button>
+      <span class="lbl">Закупка у поставщика</span>
+      <div class="pur">${sizes.length ? `<div class="sizes" id="psz" style="margin:0">${sizes.map(z => `<button data-z="${esc(z)}">${esc(z)}</button>`).join("")}</div>` : ""}
+        <div class="two" style="margin-top:8px"><input class="f" id="pcol" placeholder="Цвет / вариант" value="${esc(((it.facts || []).find(([k]) => /^цвет/i.test(k)) || [])[1] || "")}"><input class="f tn" id="pqty" type="number" min="1" value="1" inputmode="numeric"></div>
+        <button class="btn sm" id="padd" style="width:100%;margin-top:8px">+ В закупку</button>
+        <p class="note">${(SET.purchase && SET.purchase.lines || []).filter(l => l.id === it.id).map(l => `${l.size || ""} ${l.color || ""} × ${l.qty}`).join(", ") || "В закупке этой вещи пока нет"}</p></div>
     </div>` : ""}`;
   const gal = $("gal"), dots = $("dots");
   if (dots) gal.addEventListener("scroll", () => { const i = Math.round(gal.scrollLeft / gal.clientWidth); dots.querySelectorAll("i").forEach((d, j) => d.classList.toggle("on", i === j)); }, {passive:true});
   $("bk").onclick = back;
   $("lk").onclick = () => { toggleLike(it.id); $("lk").setAttribute("aria-pressed", LIKES.includes(it.id)); };
+  const buyNow = () => { if (!inCart()) { CART.push({id: it.id, size, qty: 1}); saveCart(); } haptic(); go("checkout"); };
   const btn = () => {
-    const b = $("add");
-    if (it.status !== "active") { b.disabled = true; b.textContent = it.status === "sold" ? "Продано" : "Нет в продаже"; setMain(null); return; }
-    if (sizes.length && !size) { b.disabled = true; b.textContent = "Выберите размер"; setMain(null); return; }
-    b.disabled = false; b.textContent = inCart() ? "Убрать из корзины" : "В корзину";
-    setMain(inCart() ? "Перейти в корзину" : "В корзину · " + rub(it.price), () => inCart() ? openCart() : addToCart());
+    const b = $("add"), bb = $("buy");
+    if (it.status !== "active") { b.disabled = bb.disabled = true; b.textContent = it.status === "sold" ? "Продано" : "Нет в продаже"; setMain(null); return; }
+    if (sizes.length && !size) { b.disabled = bb.disabled = true; b.textContent = "Выберите размер"; setMain(null); return; }
+    b.disabled = bb.disabled = false; b.textContent = inCart() ? "Убрать из корзины" : "В корзину";
+    // пришли по ссылке «Заказ» — главная кнопка сразу ведёт к оформлению
+    if (BUY === it.id) setMain("Оформить заказ · " + rub(it.price), buyNow);
+    else setMain(inCart() ? "Перейти в корзину" : "В корзину · " + rub(it.price), () => inCart() ? openCart() : addToCart());
   };
   const addToCart = () => { CART.push({id: it.id, size, qty: 1}); saveCart(); haptic(); toast("Добавлено в корзину"); btn(); };
+  $("buy").onclick = buyNow;
+  if (BUY === it.id && sizes.length > 1 && !size) setTimeout(() => { const z = $("sz"); if (z) { z.scrollIntoView({block: "center", behavior: "smooth"}); toast("Выберите размер — и сразу к оформлению"); } }, 400);
   $("add").onclick = () => { if (inCart()) { CART = CART.filter(c => !(c.id === it.id && c.size === size)); saveCart(); btn(); } else addToCart(); };
   app.querySelectorAll("#sz button").forEach(b => b.onclick = () => { size = b.dataset.s; app.querySelectorAll("#sz button").forEach(x => x.setAttribute("aria-pressed", x === b)); haptic("light"); btn(); });
   $("ask").onclick = async () => { try { await call("ask", {item_id: it.id}); haptic(); toast("Напишите вопрос в чат с ботом"); setTimeout(() => tg && tg.close(), 900); } catch(e) { toast(e.message); } };
   btn();
   if (ADMIN) {
+    app.querySelectorAll("[data-copy]").forEach(b => b.onclick = () => copy(b.dataset.copy));
+    $("share").onclick = () => { const u = "https://t.me/share/url?url=" + encodeURIComponent(deepLink("p", it.id)) + "&text=" + encodeURIComponent(`${it.title} — ${rub(it.price)}`); tg ? tg.openTelegramLink(u) : window.open(u); };
+    let psize = sizes.length === 1 ? sizes[0] : "";
+    app.querySelectorAll("#psz button").forEach(b => { if (b.dataset.z === psize) b.setAttribute("aria-pressed", true); b.onclick = () => { psize = b.dataset.z; app.querySelectorAll("#psz button").forEach(x => x.setAttribute("aria-pressed", x === b)); }; });
+    $("padd").onclick = async () => {
+      if (sizes.length && !psize) return toast("Выберите размер для закупки");
+      const lines = [...((SET.purchase && SET.purchase.lines) || [])];
+      const color = $("pcol").value.trim(), qty = Math.max(1, parseInt($("pqty").value, 10) || 1);
+      const same = lines.find(l => l.id === it.id && l.size === psize && l.color === color);
+      if (same) same.qty += qty; else lines.push({id: it.id, size: psize, color, qty});
+      try { await call("settings_save", {key: "purchase", value: {lines}}); SET.purchase = {lines}; haptic(); toast("Добавлено в закупку"); render.keep = true; render(); } catch(e) { toast(e.message); }
+    };
     $("ed").onclick = $("ed2").onclick = () => go("edit", it.id);
     if ($("ph2")) $("ph2").onclick = () => go("edit", it.id);
     if ($("pub")) $("pub").onclick = async () => {
@@ -673,6 +729,7 @@ function drawMenu(){
       <button class="mi" data-go="edit">+ Добавить товар</button>
       <button class="mi" data-go="groups">Группы (категории)</button>
       <button class="mi" data-grp="draft">Черновики ${ITEMS.some(i => i.status === "draft") ? `<span class="badge red" style="position:static">${ITEMS.filter(i => i.status === "draft").length}</span>` : ""}</button>
+      <button class="mi" data-go="purchase">Закупка у поставщиков ${(SET.purchase && SET.purchase.lines || []).length ? `<span class="badge" style="position:static">${SET.purchase.lines.reduce((a, l) => a + l.qty, 0)}</span>` : ""}</button>
       <button class="mi" data-go="importhelp">Импорт с Pinduoduo и 1688</button>
       <button class="mi" data-grp="arch">Архив</button>
       <button class="mi" data-go="hero">Главная: блок дропа</button>
@@ -1054,7 +1111,11 @@ if (tg) {
       GROUPS = ["Женское", "Мужское", "Унисекс"].map((name, id) => ({id, name, items: seed.filter(x => x.section === name).map(x => x.id)})); } catch(_) {}
   }
   badges(); loadOrders();
-  stack = [["home"]]; render();
+  stack = [["home"]];
+  const sp = (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) || new URLSearchParams(location.search).get("tgWebAppStartParam") || "";
+  const m = sp.match(/^([po])_(.+)$/);
+  if (m && byId(m[2])) { if (m[1] === "o") BUY = m[2]; stack.push(["product", m[2]]); }
+  render();
 })();
 </script>
 </body>
