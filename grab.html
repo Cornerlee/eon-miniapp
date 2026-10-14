@@ -52,7 +52,9 @@ function grab(){
   });
   if (!prices.length) (h.match(/"(?:price|discountPrice|priceDisplay|beginPrice)"\s*:\s*"?(\d+(?:\.\d+)?)/g) || []).forEach(function(s){ var n = parseFloat(s.replace(/[^\d.]/g, "")); if (n > 0) prices.push(n); });
   if (!props.length) document.querySelectorAll("table tr, .offer-attr-item, .attribute-item").forEach(function(r){ var c = r.innerText.split(/\t|\n|：|:/).map(function(s){ return s.trim(); }).filter(Boolean); if (c.length >= 2 && c[0].length < 20) props.push([c[0], c.slice(1).join(" ")]); });
-  return {source: src, url: u.split("#")[0], title: String(title).trim(), images: clean.slice(0, 20), prices: prices, skus: skus.slice(0, 80), props: props.slice(0, 40), text: (document.body.innerText || "").slice(0, 4000)};
+  // таблицы со страницы (там бывает размерная сетка: 衣长, 胸围, 肩宽 …)
+  var tables = [].map.call(document.querySelectorAll("table"), function(t){ return t.innerText; }).filter(function(t){ return /衣长|胸围|肩宽|袖长|腰围|臀围|裤长|尺码/.test(t); }).join("\n").slice(0, 4000);
+  return {source: src, url: u.split("#")[0], title: String(title).trim(), images: clean.slice(0, 20), prices: prices, skus: skus.slice(0, 80), props: props.slice(0, 40), tables: tables, text: (document.body.innerText || "").slice(0, 8000)};
 }
 
 if (!recv) {
