@@ -276,7 +276,9 @@ const store = {
   cloud: () => tg && tg.CloudStorage && tg.isVersionAtLeast && tg.isVersionAtLeast("6.9"),
   get(k){ return new Promise(ok => {
     const local = () => { try { ok(JSON.parse(localStorage.getItem(k) || "null")); } catch(_) { ok(null); } };
-    if (store.cloud()) tg.CloudStorage.getItem(k, (e, v) => { if (e || !v) return local(); try { ok(JSON.parse(v)); } catch(_) { local(); } }); else local();
+    if (!store.cloud()) return local();
+    const t = setTimeout(local, 1500);  // если Telegram не ответил — берём из браузера, не зависаем
+    tg.CloudStorage.getItem(k, (e, v) => { clearTimeout(t); if (e || !v) return local(); try { ok(JSON.parse(v)); } catch(_) { local(); } });
   }); },
   set(k, v){ const s = JSON.stringify(v); try { localStorage.setItem(k, s); } catch(_) {} if (store.cloud()) try { tg.CloudStorage.setItem(k, s); } catch(_) {} }
 };
