@@ -115,6 +115,11 @@ textarea.f.big{min-height:220px}
 .feedlay{display:flex;justify-content:flex-end;gap:6px;margin:12px 0 10px}
 .feedlay button{border:1px solid var(--line);padding:6px 10px;font-size:11px;letter-spacing:.08em;color:var(--muted)}
 .feedlay button[aria-pressed="true"]{color:var(--inv-fg);background:var(--inv);border-color:var(--inv)}
+.covrow{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px}
+.covrow::-webkit-scrollbar{display:none}
+.covrow button{flex:none;width:58px;height:58px;border:2px solid transparent;background:#fff;padding:0}
+.covrow button.on{border-color:var(--inv)}
+.covrow img{width:100%;height:100%;object-fit:cover}
 .secedit{font-size:10px;color:var(--muted);letter-spacing:.12em;border:1px dashed var(--line);padding:4px 8px}
 .lay{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .lay button{border:1px solid var(--line);padding:10px 6px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;display:flex;flex-direction:column;align-items:center;gap:6px}
@@ -749,6 +754,7 @@ VIEWS.product = id => {
     <button class="back" id="bk">← Назад</button>
     ${ADMIN ? `<div class="adminbar"><button class="btn w" id="ed2">✎ Редактировать</button>${it.status === "draft" ? `<button class="btn" id="pub">Опубликовать</button>` : `<button class="btn" id="ph2">Фото, цена, описание</button>`}</div>` : ""}
     <div class="gal" id="gal">${it.photos.map(u => `<img src="${esc(u)}" alt="">`).join("")}</div>
+    ${ADMIN && it.photos.length > 1 ? `<div class="covpick"><span class="lbl" style="margin:10px 0 6px">Обложка: нажмите на фото</span><div class="covrow">${it.photos.map((u, i) => `<button data-cov="${i}" class="${i ? "" : "on"}" aria-label="Сделать обложкой"><img src="${esc(u)}" alt="" loading="lazy"></button>`).join("")}</div></div>` : ""}
     ${it.photos.length > 1 ? `<div class="dots" id="dots">${it.photos.map((_, i) => `<i class="${i ? "" : "on"}"></i>`).join("")}</div>` : ""}
     <div class="ptitle"><h1>${esc(it.title)}</h1><button class="heart" id="lk" aria-pressed="${LIKES.includes(it.id)}" aria-label="В лайки">${HEART}</button></div>
     <div class="pprice tn">${rub(it.price)}${sale ? `<s>${rub(it.old_price)}</s>` : ""}</div>
@@ -818,6 +824,11 @@ VIEWS.product = id => {
       if (same) same.qty += qty; else lines.push({id: it.id, size: psize, color, qty});
       try { await call("settings_save", {key: "purchase", value: {lines}}); SET.purchase = {lines}; haptic(); toast("Добавлено в закупку"); render.keep = true; render(); } catch(e) { toast(e.message); }
     };
+    app.querySelectorAll("[data-cov]").forEach(b => b.onclick = async () => {
+      const i = +b.dataset.cov; if (!i) return;
+      const photos = [it.photos[i], ...it.photos.filter((_, k) => k !== i)];
+      try { await save({...it, photos}); haptic(); toast("Обложка изменена"); render.keep = true; render(); } catch (e) { toast(e.message); }
+    });
     $("ed").onclick = $("ed2").onclick = () => go("edit", it.id);
     if ($("ph2")) $("ph2").onclick = () => go("edit", it.id);
     if ($("pub")) $("pub").onclick = async () => {
