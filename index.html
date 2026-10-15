@@ -101,6 +101,14 @@ textarea.f.big{min-height:220px}
 .grid.L-row::-webkit-scrollbar{display:none}
 .grid.L-row .pc{flex:none;width:44%;scroll-snap-align:start}
 .feedbar{position:relative}
+.fsearch{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+.fsearch .f{padding:11px 12px}
+.secpill{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px;padding:8px 12px;border:1px solid var(--inv);font-size:12px;letter-spacing:.06em}
+.secpill button{width:26px;height:26px}
+.secpanel{margin-top:10px;border:1px solid var(--line);max-height:50vh;overflow-y:auto;padding:0 12px}
+.secrow{display:flex;justify-content:space-between;align-items:center;width:100%;padding:12px 0;border-bottom:1px solid var(--line);font-size:12px;letter-spacing:.12em;text-transform:uppercase;text-align:left}
+.secrow:last-child{border-bottom:0}
+.secrow[aria-pressed="true"] span{text-decoration:underline;text-underline-offset:4px}
 .feedlay{display:flex;justify-content:flex-end;gap:6px;margin:12px 0 10px}
 .feedlay button{border:1px solid var(--line);padding:6px 10px;font-size:11px;letter-spacing:.08em;color:var(--muted)}
 .feedlay button[aria-pressed="true"]{color:var(--inv-fg);background:var(--inv);border-color:var(--inv)}
@@ -537,8 +545,21 @@ function forYou(list){
 }
 const SORTS = {foryou: "Для вас", new: "Новинки", asc: "Цена ↑", desc: "Цена ↓", color: "По цвету"};
 const FEED_LAYOUTS = {"2": "▦ 2", "3": "▦ 3", "1": "▢ 1"};
+// разделы для поиска: группы + типы вещей, с числом вещей в каждом
+function feedSections(base){
+  const out = GROUPS.map(g => ({key: "g:" + g.id, name: g.name, n: base.filter(it => g.items.includes(it.id)).length, kind: "Группа"}));
+  const types = {};
+  base.forEach(it => { if (it.type) types[it.type] = (types[it.type] || 0) + 1; });
+  Object.entries(types).forEach(([t, n]) => { if (!out.some(x => x.name.toLowerCase() === t.toLowerCase())) out.push({key: "t:" + t, name: t, n, kind: "Тип"}); });
+  return out.filter(x => x.n > 0).sort((a, b) => b.n - a.n);
+}
 function applyFilters(list, o){
-  if (o.grp && o.grp !== "all") { const g = GROUPS.find(g => String(g.id) === o.grp); list = list.filter(it => g && g.items.includes(it.id)); }
+  if (o.sec) {
+    const [k, v] = [o.sec.slice(0, 1), o.sec.slice(2)];
+    if (k === "g") { const g = GROUPS.find(g => String(g.id) === v); list = list.filter(it => g && g.items.includes(it.id)); }
+    else list = list.filter(it => it.type === v);
+  }
+  if (o.q) { const q = o.q.toLowerCase(); list = list.filter(it => (it.title + " " + it.type + " " + it.section + " " + it.id + " " + (it.facts || []).map(f => f[1]).join(" ")).toLowerCase().includes(q)); }
   if (o.size) list = list.filter(it => sizesOf(it).map(z => z.toUpperCase()).includes(o.size));
   if (o.sale) list = list.filter(it => it.old_price > it.price);
   if (o.sort === "asc") return [...list].sort((a, b) => a.price - b.price);
@@ -548,7 +569,7 @@ function applyFilters(list, o){
   return forYou(list);
 }
 VIEWS.home = (o = {}) => {
-  const st = stack[stack.length - 1]; st[1] = o = {grp: "all", size: "", sort: "foryou", sale: false, lay: "2", ...o};
+  const st = stack[stack.length - 1]; st[1] = o = {sec: "", q: "", size: "", sort: "foryou", sale: false, lay: "2", panel: false, ...o};
   const h = {...HERO_DEFAULT, ...(SET.hero || {})};
   const items = visible();
   const img = h.image || (items[0] && items[0].photos[0]) || "";
@@ -561,43 +582,47 @@ VIEWS.home = (o = {}) => {
       <button class="go" id="hgo">${esc(h.button || "Смотреть коллекцию")} <span>⟶</span></button>
     </div></section>
     ${ADMIN && !ITEMS.length ? `<div class="adm"><div class="ttl">Каталог пуст</div><button class="btn w" id="imp">Загрузить 29 вещей из первого заказа</button></div>` : ""}
-    ${homeSections().map((sec, i) => {
-      const list = sectionItems(sec);
-      if (!list.length && !ADMIN) return "";
-      return `<div class="h2">${esc(sec.title)} ${ADMIN ? `<button class="secedit" data-sec="${i}">✎ изменить</button>` : sec.source === "all" ? `<button data-allcat>Каталог →</button>` : ""}</div>${grid(list, sec.layout)}`;
-    }).join("")}
-    ${ADMIN ? `<div style="height:14px"></div><button class="btn" id="homeedit">✎ Разделы главной: добавить, переставить, удалить</button>` : ""}
-    ${feedHTML(o)}`;
-  $("hgo").onclick = () => document.getElementById("feed").scrollIntoView({behavior: "smooth"});
-  bindFeed(o);
-  app.querySelectorAll("[data-allcat]").forEach(b => b.onclick = () => go("catalog", {}));
-  app.querySelectorAll("[data-sec]").forEach(b => b.onclick = () => go("section", +b.dataset.sec));
-  if ($("homeedit")) $("homeedit").onclick = () => go("homeedit");
+    <div id="feed" class="feedbar">
+      <div class="h2" style="margin:24px 0 10px">Лента <small class="mut tn" id="fcount" style="font-size:11px;font-weight:400;letter-spacing:.12em"></small></div>
+      <div class="fsearch"><input class="f" id="fq" type="search" placeholder="Поиск: вещь или раздел" value="${esc(o.q)}" autocomplete="off"><button class="chip" id="fsecbtn" aria-pressed="${o.panel}">Разделы ▾</button></div>
+    </div>
+    <div id="feedbody"></div>`;
+  $("hgo").onclick = () => $("feed").scrollIntoView({behavior: "smooth"});
+  // поиск перерисовывает только ленту — поле ввода не теряет фокус
+  $("fq").oninput = () => { o.q = $("fq").value.trim(); drawFeed(o); };
+  $("fsecbtn").onclick = () => { o.panel = !o.panel; $("fsecbtn").setAttribute("aria-pressed", o.panel); drawFeed(o); };
   if ($("imp")) $("imp").onclick = importSeed;
-  bindCards();
+  drawFeed(o);
 };
-
-function feedHTML(o){
+function drawFeed(o){
   const base = visible();
-  const groups = GROUPS.filter(g => base.some(it => g.items.includes(it.id)));
+  const secs = feedSections(base);
   const rank = z => SIZE_ORDER.includes(z) ? SIZE_ORDER.indexOf(z) : 100 + parseInt(z, 10);
   const sizes = [...new Set(base.flatMap(sizesOf).map(z => z.toUpperCase()))].sort((a, b) => rank(a) - rank(b));
   const list = applyFilters(base, o);
+  const cur = secs.find(x => x.key === o.sec);
+  const q = o.q.toLowerCase();
+  const hits = q ? secs.filter(x => x.name.toLowerCase().includes(q)) : [];
   const chip = (k, v, label) => `<button class="chip" data-fk="${k}" data-fv="${esc(v)}" aria-pressed="${String(o[k]) === String(v)}">${esc(label)}</button>`;
-  return `<div id="feed" class="feedbar">
-      <div class="h2" style="margin:30px 0 10px">Лента <small class="mut tn" style="font-size:11px;font-weight:400;letter-spacing:.12em">${list.length} ${plural(list.length, "вещь", "вещи", "вещей")}</small></div>
-      <div class="chips">${chip("grp", "all", "Все")}${groups.map(g => chip("grp", String(g.id), g.name)).join("")}</div>
-      <div class="chips" style="margin-top:8px">${Object.entries(SORTS).map(([k, v]) => chip("sort", k, v)).join("")}<button class="chip" data-fsale aria-pressed="${o.sale}">% Sale</button></div>
-      ${sizes.length ? `<div class="chips" style="margin-top:8px">${chip("size", "", "Любой размер")}${sizes.map(z => chip("size", z, z)).join("")}</div>` : ""}
-      <div class="feedlay">${Object.entries(FEED_LAYOUTS).map(([k, v]) => `<button data-fl="${k}" aria-pressed="${o.lay === k}" aria-label="${k} в ряд">${v}</button>`).join("")}</div>
-    </div>
-    ${list.length ? grid(list, o.lay) : `<div class="empty">Ничего не нашлось — сбросьте фильтры</div>`}`;
-}
-function bindFeed(o){
-  const upd = p => { Object.assign(o, p); render.keep = true; render(); };
-  app.querySelectorAll("[data-fk]").forEach(b => b.onclick = () => { haptic("light"); upd({[b.dataset.fk]: b.dataset.fv}); });
-  app.querySelectorAll("[data-fsale]").forEach(b => b.onclick = () => upd({sale: !o.sale}));
-  app.querySelectorAll("[data-fl]").forEach(b => b.onclick = () => upd({lay: b.dataset.fl}));
+  const secRow = x => `<button class="secrow" data-sec="${esc(x.key)}" aria-pressed="${o.sec === x.key}"><span>${esc(x.name)}</span><small class="mut tn">${x.n}</small></button>`;
+  $("fcount").textContent = `${list.length} ${plural(list.length, "вещь", "вещи", "вещей")}`;
+  $("feedbody").innerHTML = `
+    ${cur ? `<div class="secpill"><span>Раздел: <b>${esc(cur.name)}</b></span><button data-sec="" aria-label="Сбросить раздел">✕</button></div>` : ""}
+    ${hits.length && !o.panel ? `<div class="chips" style="margin-top:10px">${hits.slice(0, 8).map(x => `<button class="chip" data-sec="${esc(x.key)}" aria-pressed="${o.sec === x.key}">${esc(x.name)} · ${x.n}</button>`).join("")}</div>` : ""}
+    ${o.panel ? `<div class="secpanel">
+      <button class="secrow" data-sec="" aria-pressed="${!o.sec}"><span>Все вещи</span><small class="mut tn">${base.length}</small></button>
+      ${(q ? hits : secs).map(secRow).join("") || '<p class="note" style="padding:10px 0">Разделов по запросу нет</p>'}
+    </div>` : ""}
+    <div class="chips" style="margin-top:10px">${Object.entries(SORTS).map(([k, v]) => chip("sort", k, v)).join("")}<button class="chip" data-fsale aria-pressed="${o.sale}">% Sale</button></div>
+    ${sizes.length ? `<div class="chips" style="margin-top:8px">${chip("size", "", "Любой размер")}${sizes.map(z => chip("size", z, z)).join("")}</div>` : ""}
+    <div class="feedlay">${Object.entries(FEED_LAYOUTS).map(([k, v]) => `<button data-fl="${k}" aria-pressed="${o.lay === k}" aria-label="${k} в ряд">${v}</button>`).join("")}</div>
+    ${list.length ? grid(list, o.lay) : `<div class="empty">Ничего не нашлось — сбросьте поиск или раздел</div>`}`;
+  const fb = $("feedbody");
+  fb.querySelectorAll("[data-sec]").forEach(b => b.onclick = () => { haptic("light"); o.sec = b.dataset.sec; o.panel = false; $("fsecbtn").setAttribute("aria-pressed", false); drawFeed(o); $("feed").scrollIntoView({behavior: "smooth"}); });
+  fb.querySelectorAll("[data-fk]").forEach(b => b.onclick = () => { haptic("light"); o[b.dataset.fk] = b.dataset.fv; drawFeed(o); });
+  fb.querySelectorAll("[data-fsale]").forEach(b => b.onclick = () => { o.sale = !o.sale; drawFeed(o); });
+  fb.querySelectorAll("[data-fl]").forEach(b => b.onclick = () => { o.lay = b.dataset.fl; drawFeed(o); });
+  bindCards();
 }
 
 // ---------- каталог с фильтрами ----------
@@ -814,7 +839,6 @@ function drawMenu(){
       <button class="mi" data-go="importhelp">Импорт с Pinduoduo и 1688</button>
       <button class="mi" data-grp="arch">Архив</button>
       <button class="mi" data-go="hero">Главная: блок дропа</button>
-      <button class="mi" data-go="homeedit">Главная: разделы и сетка</button>
       <button class="mi" data-go="texts">Тексты: о нас, контакты, вопросы</button>
       <button class="mi" id="maip">Поставить ИИ-фото первыми</button>` : ""}
     </div>`;
