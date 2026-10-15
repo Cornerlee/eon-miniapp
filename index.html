@@ -100,6 +100,10 @@ textarea.f.big{min-height:220px}
 .grid.L-row{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;margin:0 -12px;padding:0 12px}
 .grid.L-row::-webkit-scrollbar{display:none}
 .grid.L-row .pc{flex:none;width:44%;scroll-snap-align:start}
+.feedbar{position:relative}
+.feedlay{display:flex;justify-content:flex-end;gap:6px;margin:12px 0 10px}
+.feedlay button{border:1px solid var(--line);padding:6px 10px;font-size:11px;letter-spacing:.08em;color:var(--muted)}
+.feedlay button[aria-pressed="true"]{color:var(--inv-fg);background:var(--inv);border-color:var(--inv)}
 .secedit{font-size:10px;color:var(--muted);letter-spacing:.12em;border:1px dashed var(--line);padding:4px 8px}
 .lay{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .lay button{border:1px solid var(--line);padding:10px 6px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;display:flex;flex-direction:column;align-items:center;gap:6px}
@@ -270,7 +274,7 @@ const deepLink = (kind, id) => `https://t.me/${BOT}?startapp=${kind}_${id}`;
 const app = document.getElementById("app");
 const $ = id => document.getElementById(id);
 let ITEMS = [], GROUPS = [], SET = {}, ORDERS = [], ADMIN = false, USER = null;
-let CART = [], LIKES = [], SEEN = [], CONTACT = {};
+let CART = [], LIKES = [], SEEN = [], CONTACT = {}, RECENT = [];
 let stack = [], drawer = null;
 
 // ---------- утилиты ----------
@@ -391,8 +395,7 @@ const newest = list => [...list].sort((a, b) => String(b.created_at || "").local
 const HERO_DEFAULT = {date:"", title:"EP", sub:"Москва · под заказ", text:"Одежда, которую мы сами отбираем у фабрик и проверяем по фото и отзывам.\n\nПривозим под заказ за 2–3 недели. Выберите вещь и размер — подтвердим наличие и срок в чате.", image:"hero.jpg", button:"Смотреть коллекцию"};
 // разделы главной: хранятся в настройках (settings.home), админ меняет их прямо в приложении
 const HOME_DEFAULT = [
-  {title: "Новое поступление", source: "new", limit: 6, layout: "2", items: []},
-  {title: "Всё наличие", source: "all", limit: 0, layout: "2", items: []}
+  {title: "Новое поступление", source: "new", limit: 8, layout: "row", items: []}
 ];
 const SOURCES = {new: "Новинки (сами, по дате)", all: "Всё наличие (сами)", group: "Товары из группы", manual: "Выбрать вручную"};
 const homeSections = () => (SET.home && SET.home.sections) || HOME_DEFAULT;
@@ -516,7 +519,36 @@ VIEWS.section = idx => {
   };
   draw();
 };
-VIEWS.home = () => {
+// лента «Для вас»: похожее на то, что клиент смотрел, лайкал и положил в корзину
+function forYou(list){
+  const signals = [...CART.map(c => [c.id, 3]), ...LIKES.map(id => [id, 2]), ...RECENT.slice(0, 15).map((id, i) => [id, 1.5 - i * 0.08])];
+  const src = signals.map(([id, w]) => [byId(id), w]).filter(([x]) => x);
+  if (!src.length) return newest(list);
+  return list.map(x => {
+    let sc = 0;
+    for (const [r, w] of src) {
+      if (r.id === x.id) { sc -= w * 0.5; continue; }  // уже видел — чуть ниже, но не прячем
+      if (r.type && r.type === x.type) sc += 3 * w;
+      if (r.section && r.section === x.section) sc += 2 * w;
+      if (r.price && Math.abs(x.price - r.price) / r.price < 0.3) sc += w;
+    }
+    return [sc, x];
+  }).sort((a, b) => b[0] - a[0] || String(b[1].created_at || "").localeCompare(String(a[1].created_at || ""))).map(([, x]) => x);
+}
+const SORTS = {foryou: "Для вас", new: "Новинки", asc: "Цена ↑", desc: "Цена ↓", color: "По цвету"};
+const FEED_LAYOUTS = {"2": "▦ 2", "3": "▦ 3", "1": "▢ 1"};
+function applyFilters(list, o){
+  if (o.grp && o.grp !== "all") { const g = GROUPS.find(g => String(g.id) === o.grp); list = list.filter(it => g && g.items.includes(it.id)); }
+  if (o.size) list = list.filter(it => sizesOf(it).map(z => z.toUpperCase()).includes(o.size));
+  if (o.sale) list = list.filter(it => it.old_price > it.price);
+  if (o.sort === "asc") return [...list].sort((a, b) => a.price - b.price);
+  if (o.sort === "desc") return [...list].sort((a, b) => b.price - a.price);
+  if (o.sort === "new") return newest(list);
+  if (o.sort === "color") return byColor(list);
+  return forYou(list);
+}
+VIEWS.home = (o = {}) => {
+  const st = stack[stack.length - 1]; st[1] = o = {grp: "all", size: "", sort: "foryou", sale: false, lay: "2", ...o};
   const h = {...HERO_DEFAULT, ...(SET.hero || {})};
   const items = visible();
   const img = h.image || (items[0] && items[0].photos[0]) || "";
@@ -534,14 +566,39 @@ VIEWS.home = () => {
       if (!list.length && !ADMIN) return "";
       return `<div class="h2">${esc(sec.title)} ${ADMIN ? `<button class="secedit" data-sec="${i}">✎ изменить</button>` : sec.source === "all" ? `<button data-allcat>Каталог →</button>` : ""}</div>${grid(list, sec.layout)}`;
     }).join("")}
-    ${ADMIN ? `<div style="height:14px"></div><button class="btn" id="homeedit">✎ Разделы главной: добавить, переставить, удалить</button>` : ""}`;
-  $("hgo").onclick = () => go("catalog", {});
+    ${ADMIN ? `<div style="height:14px"></div><button class="btn" id="homeedit">✎ Разделы главной: добавить, переставить, удалить</button>` : ""}
+    ${feedHTML(o)}`;
+  $("hgo").onclick = () => document.getElementById("feed").scrollIntoView({behavior: "smooth"});
+  bindFeed(o);
   app.querySelectorAll("[data-allcat]").forEach(b => b.onclick = () => go("catalog", {}));
   app.querySelectorAll("[data-sec]").forEach(b => b.onclick = () => go("section", +b.dataset.sec));
   if ($("homeedit")) $("homeedit").onclick = () => go("homeedit");
   if ($("imp")) $("imp").onclick = importSeed;
   bindCards();
 };
+
+function feedHTML(o){
+  const base = visible();
+  const groups = GROUPS.filter(g => base.some(it => g.items.includes(it.id)));
+  const rank = z => SIZE_ORDER.includes(z) ? SIZE_ORDER.indexOf(z) : 100 + parseInt(z, 10);
+  const sizes = [...new Set(base.flatMap(sizesOf).map(z => z.toUpperCase()))].sort((a, b) => rank(a) - rank(b));
+  const list = applyFilters(base, o);
+  const chip = (k, v, label) => `<button class="chip" data-fk="${k}" data-fv="${esc(v)}" aria-pressed="${String(o[k]) === String(v)}">${esc(label)}</button>`;
+  return `<div id="feed" class="feedbar">
+      <div class="h2" style="margin:30px 0 10px">Лента <small class="mut tn" style="font-size:11px;font-weight:400;letter-spacing:.12em">${list.length} ${plural(list.length, "вещь", "вещи", "вещей")}</small></div>
+      <div class="chips">${chip("grp", "all", "Все")}${groups.map(g => chip("grp", String(g.id), g.name)).join("")}</div>
+      <div class="chips" style="margin-top:8px">${Object.entries(SORTS).map(([k, v]) => chip("sort", k, v)).join("")}<button class="chip" data-fsale aria-pressed="${o.sale}">% Sale</button></div>
+      ${sizes.length ? `<div class="chips" style="margin-top:8px">${chip("size", "", "Любой размер")}${sizes.map(z => chip("size", z, z)).join("")}</div>` : ""}
+      <div class="feedlay">${Object.entries(FEED_LAYOUTS).map(([k, v]) => `<button data-fl="${k}" aria-pressed="${o.lay === k}" aria-label="${k} в ряд">${v}</button>`).join("")}</div>
+    </div>
+    ${list.length ? grid(list, o.lay) : `<div class="empty">Ничего не нашлось — сбросьте фильтры</div>`}`;
+}
+function bindFeed(o){
+  const upd = p => { Object.assign(o, p); render.keep = true; render(); };
+  app.querySelectorAll("[data-fk]").forEach(b => b.onclick = () => { haptic("light"); upd({[b.dataset.fk]: b.dataset.fv}); });
+  app.querySelectorAll("[data-fsale]").forEach(b => b.onclick = () => upd({sale: !o.sale}));
+  app.querySelectorAll("[data-fl]").forEach(b => b.onclick = () => upd({lay: b.dataset.fl}));
+}
 
 // ---------- каталог с фильтрами ----------
 const SIZE_ORDER = ["XXS", "XS", "S", "M", "L", "XL", "XXL", "XXXL"];
@@ -618,6 +675,7 @@ function descHTML(t){
 }
 VIEWS.product = id => {
   const it = byId(id); if (!it) return back();
+  if (RECENT[0] !== it.id) { RECENT = [it.id, ...RECENT.filter(x => x !== it.id)].slice(0, 30); store.set("eon_recent", RECENT); }
   const sizes = sizesOf(it), p = it.private || {}, sale = it.old_price > it.price;
   let size = sizes.length === 1 ? sizes[0] : "";
   const inCart = () => CART.some(c => c.id === it.id && c.size === size);
@@ -1123,7 +1181,8 @@ if (tg) {
   tg.BackButton.onClick(back);
 }
 (async () => {
-  [CART, LIKES, CONTACT] = await Promise.all([store.get("eon_cart"), store.get("eon_likes"), store.get("eon_contact")]);
+  [CART, LIKES, CONTACT, RECENT] = await Promise.all([store.get("eon_cart"), store.get("eon_likes"), store.get("eon_contact"), store.get("eon_recent")]);
+  RECENT = Array.isArray(RECENT) ? RECENT : [];
   CART = Array.isArray(CART) ? CART : []; LIKES = Array.isArray(LIKES) ? LIKES : []; CONTACT = CONTACT || {};
   try {
     const me = await call("me"); ADMIN = me.admin; USER = me.user || (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) || null;
