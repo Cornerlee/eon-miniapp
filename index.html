@@ -326,11 +326,12 @@ async function copy(text){
 // ---------- навигация: стек экранов, системная кнопка «Назад» Telegram ----------
 function go(view, arg, replace){
   if (replace) stack.pop();
+  else if (stack.length) stack[stack.length - 1].y = window.scrollY;  // запомнили прокрутку экрана, с которого ушли
   stack.push([view, arg]); render();
 }
 function back(){
   if (drawer) return closeDrawer();
-  if (stack.length > 1) { stack.pop(); render(); }
+  if (stack.length > 1) { stack.pop(); render.restore = stack[stack.length - 1].y || 0; render(); }
 }
 function tab(t){ stack = [[t]]; render(); }
 function setMain(text, fn){
@@ -349,7 +350,11 @@ function render(){
   document.querySelectorAll("#bar button").forEach(b => b.setAttribute("aria-current", b.dataset.tab === root));
   $("bar").hidden = ["checkout", "edit", "group", "texts", "hero", "section", "homeedit"].includes(v);
   (VIEWS[v] || VIEWS.home)(arg);
-  if (!render.keep) window.scrollTo(0, 0);
+  if (render.restore != null) {
+    // возвращаемся туда же; повторяем, пока догружаются картинки и страница не стала нужной высоты
+    const y = render.restore; render.restore = null;
+    window.scrollTo(0, y); requestAnimationFrame(() => window.scrollTo(0, y)); setTimeout(() => window.scrollTo(0, y), 120); setTimeout(() => window.scrollTo(0, y), 400);
+  } else if (!render.keep) window.scrollTo(0, 0);
   render.keep = false;
 }
 function badges(){
@@ -585,6 +590,22 @@ VIEWS.catalog = (o = {}) => {
   bindCards();
 };
 
+// ---------- рекомендации: тот же тип, тот же раздел, общие группы, похожая цена ----------
+function recommend(it, n = 8){
+  const groupsOf = new Set(GROUPS.filter(g => g.items.includes(it.id)).map(g => g.id));
+  return visible().filter(x => x.id !== it.id && x.status === "active").map(x => {
+    let sc = 0;
+    if (x.type && x.type === it.type) sc += 4;
+    if (x.section && x.section === it.section) sc += 3;
+    if (GROUPS.some(g => groupsOf.has(g.id) && g.items.includes(x.id))) sc += 2;
+    if (it.price && Math.abs(x.price - it.price) / it.price < 0.3) sc += 1;
+    if (LIKES.includes(x.id)) sc += 1;
+    // небольшая «перетасовка», стабильная для пары товаров, чтобы подборки не выглядели одинаково
+    const h = [...(it.id + x.id)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 997, 7) / 997;
+    return [sc + h, x];
+  }).sort((a, b) => b[0] - a[0]).slice(0, n).map(([, x]) => x);
+}
+
 // ---------- товар ----------
 function descHTML(t){
   const out = []; let ul = null;
@@ -638,7 +659,8 @@ VIEWS.product = id => {
         <div class="two" style="margin-top:8px"><input class="f" id="pcol" placeholder="Цвет / вариант" value="${esc(((it.facts || []).find(([k]) => /^цвет/i.test(k)) || [])[1] || "")}"><input class="f tn" id="pqty" type="number" min="1" value="1" inputmode="numeric"></div>
         <button class="btn sm" id="padd" style="width:100%;margin-top:8px">+ В закупку</button>
         <p class="note">${(SET.purchase && SET.purchase.lines || []).filter(l => l.id === it.id).map(l => `${l.size || ""} ${l.color || ""} × ${l.qty}`).join(", ") || "В закупке этой вещи пока нет"}</p></div>
-    </div>` : ""}`;
+    </div>` : ""}
+    ${(() => { const r = recommend(it); return r.length ? `<div class="h2" style="margin-top:34px">Вам может понравиться</div>${grid(r)}` : ""; })()}`;
   const gal = $("gal"), dots = $("dots");
   if (dots) gal.addEventListener("scroll", () => { const i = Math.round(gal.scrollLeft / gal.clientWidth); dots.querySelectorAll("i").forEach((d, j) => d.classList.toggle("on", i === j)); }, {passive:true});
   $("bk").onclick = back;
@@ -655,6 +677,7 @@ VIEWS.product = id => {
   };
   const addToCart = () => { CART.push({id: it.id, size, qty: 1}); saveCart(); haptic(); toast("Добавлено в корзину"); btn(); };
   $("buy").onclick = buyNow;
+  bindCards();  // карточки в блоке рекомендаций
   if (BUY === it.id && sizes.length > 1 && !size) setTimeout(() => { const z = $("sz"); if (z) { z.scrollIntoView({block: "center", behavior: "smooth"}); toast("Выберите размер — и сразу к оформлению"); } }, 400);
   $("add").onclick = () => { if (inCart()) { CART = CART.filter(c => !(c.id === it.id && c.size === size)); saveCart(); btn(); } else addToCart(); };
   app.querySelectorAll("#sz button").forEach(b => b.onclick = () => { size = b.dataset.s; app.querySelectorAll("#sz button").forEach(x => x.setAttribute("aria-pressed", x === b)); haptic("light"); btn(); });
