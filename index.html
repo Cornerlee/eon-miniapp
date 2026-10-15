@@ -108,6 +108,9 @@ textarea.f.big{min-height:220px}
 .secpanel{margin-top:10px;border:1px solid var(--line);max-height:50vh;overflow-y:auto;padding:0 12px}
 .secrow{display:flex;justify-content:space-between;align-items:center;width:100%;padding:12px 0;border-bottom:1px solid var(--line);font-size:12px;letter-spacing:.12em;text-transform:uppercase;text-align:left}
 .secrow:last-child{border-bottom:0}
+.secline{display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--line)}
+.secline .secrow{border-bottom:0;flex:1;min-width:0}
+.secedit2{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:6px;padding:8px 0;border-bottom:1px solid var(--line)}
 .secrow[aria-pressed="true"] span{text-decoration:underline;text-underline-offset:4px}
 .feedlay{display:flex;justify-content:flex-end;gap:6px;margin:12px 0 10px}
 .feedlay button{border:1px solid var(--line);padding:6px 10px;font-size:11px;letter-spacing:.08em;color:var(--muted)}
@@ -550,8 +553,10 @@ function feedSections(base){
   const out = GROUPS.map(g => ({key: "g:" + g.id, name: g.name, n: base.filter(it => g.items.includes(it.id)).length, kind: "Группа"}));
   const types = {};
   base.forEach(it => { if (it.type) types[it.type] = (types[it.type] || 0) + 1; });
-  Object.entries(types).forEach(([t, n]) => { if (!out.some(x => x.name.toLowerCase() === t.toLowerCase())) out.push({key: "t:" + t, name: t, n, kind: "Тип"}); });
-  return out.filter(x => x.n > 0).sort((a, b) => b.n - a.n);
+  const hidden = (SET.feed && SET.feed.hiddenTypes) || [];
+  const tlist = Object.entries(types).filter(([t]) => !hidden.includes(t) && !out.some(x => x.name.toLowerCase() === t.toLowerCase()))
+    .sort((a, b) => b[1] - a[1]).map(([t, n]) => ({key: "t:" + t, name: t, n, kind: "Тип"}));
+  return [...out.filter(x => x.n > 0 || ADMIN), ...tlist];
 }
 function applyFilters(list, o){
   if (o.sec) {
@@ -604,7 +609,9 @@ function drawFeed(o){
   const q = o.q.toLowerCase();
   const hits = q ? secs.filter(x => x.name.toLowerCase().includes(q)) : [];
   const chip = (k, v, label) => `<button class="chip" data-fk="${k}" data-fv="${esc(v)}" aria-pressed="${String(o[k]) === String(v)}">${esc(label)}</button>`;
-  const secRow = x => `<button class="secrow" data-sec="${esc(x.key)}" aria-pressed="${o.sec === x.key}"><span>${esc(x.name)}</span><small class="mut tn">${x.n}</small></button>`;
+  const secRow = x => o.ren === x.key
+    ? `<div class="secedit2"><input class="f" id="renv" value="${esc(x.name)}" maxlength="40"><button class="chip" data-rensave="${esc(x.key)}" aria-pressed="true">OK</button><button class="chip" data-rencancel>✕</button></div>`
+    : `<div class="secline"><button class="secrow" data-sec="${esc(x.key)}" aria-pressed="${o.sec === x.key}"><span>${esc(x.name)}${ADMIN ? ` <small class="mut" style="letter-spacing:.06em;text-transform:none">· ${x.kind.toLowerCase()}</small>` : ""}</span><small class="mut tn">${x.n}</small></button>${ADMIN ? `<button class="gico" data-secedit="${esc(x.key)}" aria-label="Изменить раздел">✎</button><button class="gico del" data-secdel="${esc(x.key)}" aria-label="${x.kind === "Тип" ? "Скрыть тип из разделов" : "Удалить группу"}">✕</button>` : ""}</div>`;
   $("fcount").textContent = `${list.length} ${plural(list.length, "вещь", "вещи", "вещей")}`;
   $("feedbody").innerHTML = `
     ${cur ? `<div class="secpill"><span>Раздел: <b>${esc(cur.name)}</b></span><button data-sec="" aria-label="Сбросить раздел">✕</button></div>` : ""}
@@ -612,12 +619,44 @@ function drawFeed(o){
     ${o.panel ? `<div class="secpanel">
       <button class="secrow" data-sec="" aria-pressed="${!o.sec}"><span>Все вещи</span><small class="mut tn">${base.length}</small></button>
       ${(q ? hits : secs).map(secRow).join("") || '<p class="note" style="padding:10px 0">Разделов по запросу нет</p>'}
+      ${ADMIN ? `<div class="two" style="padding:12px 0"><button class="btn sm" id="secnew">+ Новый раздел</button><button class="btn sm" id="secorder">Порядок разделов</button></div>
+        ${((SET.feed && SET.feed.hiddenTypes) || []).length ? `<p class="note" style="padding-bottom:10px">Скрыто: ${SET.feed.hiddenTypes.map(t => `<button class="chip" data-unhide="${esc(t)}" style="margin:4px 4px 0 0">${esc(t)} ↺</button>`).join("")}</p>` : ""}
+        <p class="note" style="padding-bottom:12px">Группа — подборка, вещи в неё вы добавляете сами. Тип — берётся из карточек товаров («Куртки», «Брюки»…): переименование меняет тип у всех вещей сразу.</p>` : ""}
     </div>` : ""}
     <div class="chips" style="margin-top:10px">${Object.entries(SORTS).map(([k, v]) => chip("sort", k, v)).join("")}<button class="chip" data-fsale aria-pressed="${o.sale}">% Sale</button></div>
     ${sizes.length ? `<div class="chips" style="margin-top:8px">${chip("size", "", "Любой размер")}${sizes.map(z => chip("size", z, z)).join("")}</div>` : ""}
     <div class="feedlay">${Object.entries(FEED_LAYOUTS).map(([k, v]) => `<button data-fl="${k}" aria-pressed="${o.lay === k}" aria-label="${k} в ряд">${v}</button>`).join("")}</div>
     ${list.length ? grid(list, o.lay) : `<div class="empty">Ничего не нашлось — сбросьте поиск или раздел</div>`}`;
   const fb = $("feedbody");
+  // --- редактирование разделов (админ) ---
+  const saveFeedSet = async v => { await call("settings_save", {key: "feed", value: v}); SET.feed = v; };
+  fb.querySelectorAll("[data-secedit]").forEach(b => b.onclick = () => {
+    const k = b.dataset.secedit;
+    if (k.startsWith("g:")) go("group", +k.slice(2)); else { o.ren = k; drawFeed(o); setTimeout(() => { const i = $("renv"); if (i) { i.focus(); i.select(); } }, 30); }
+  });
+  fb.querySelectorAll("[data-rencancel]").forEach(b => b.onclick = () => { o.ren = ""; drawFeed(o); });
+  fb.querySelectorAll("[data-rensave]").forEach(b => b.onclick = async () => {
+    const from = b.dataset.rensave.slice(2), to = $("renv").value.trim();
+    if (!to) return toast("Введите название");
+    if (to === from) { o.ren = ""; drawFeed(o); return; }
+    const list = ITEMS.filter(it => it.type === from);
+    b.disabled = true; b.textContent = "…";
+    try { for (const it of list) await save({...it, type: to}); haptic(); toast(`Переименовано у ${list.length} ${plural(list.length, "вещи", "вещей", "вещей")}`); if (o.sec === "t:" + from) o.sec = "t:" + to; }
+    catch (e) { toast(e.message); }
+    o.ren = ""; drawFeed(o);
+  });
+  fb.querySelectorAll("[data-secdel]").forEach(b => { let armed = false; b.onclick = async () => {
+    const k = b.dataset.secdel;
+    if (!armed) { armed = true; b.textContent = k.startsWith("g:") ? "Удалить?" : "Скрыть?"; b.classList.add("wide"); setTimeout(() => { armed = false; b.textContent = "✕"; b.classList.remove("wide"); }, 3000); return; }
+    try {
+      if (k.startsWith("g:")) { await call("group_delete", {id: +k.slice(2)}); GROUPS = GROUPS.filter(g => "g:" + g.id !== k); toast("Группа удалена, вещи остались в каталоге"); }
+      else { const h = [...((SET.feed && SET.feed.hiddenTypes) || []), k.slice(2)]; await saveFeedSet({...(SET.feed || {}), hiddenTypes: h}); toast("Тип скрыт из разделов"); }
+      if (o.sec === k) o.sec = ""; haptic(); drawFeed(o);
+    } catch (e) { toast(e.message); }
+  }; });
+  fb.querySelectorAll("[data-unhide]").forEach(b => b.onclick = async () => { const h = ((SET.feed && SET.feed.hiddenTypes) || []).filter(t => t !== b.dataset.unhide); try { await saveFeedSet({...(SET.feed || {}), hiddenTypes: h}); drawFeed(o); } catch (e) { toast(e.message); } });
+  if ($("secnew")) $("secnew").onclick = () => go("group", null);
+  if ($("secorder")) $("secorder").onclick = () => go("groups");
   fb.querySelectorAll("[data-sec]").forEach(b => b.onclick = () => { haptic("light"); o.sec = b.dataset.sec; o.panel = false; $("fsecbtn").setAttribute("aria-pressed", false); drawFeed(o); $("feed").scrollIntoView({behavior: "smooth"}); });
   fb.querySelectorAll("[data-fk]").forEach(b => b.onclick = () => { haptic("light"); o[b.dataset.fk] = b.dataset.fv; drawFeed(o); });
   fb.querySelectorAll("[data-fsale]").forEach(b => b.onclick = () => { o.sale = !o.sale; drawFeed(o); });
