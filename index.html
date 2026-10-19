@@ -371,7 +371,7 @@ function render(){
   if (tg) stack.length > 1 ? tg.BackButton.show() : tg.BackButton.hide();
   const root = stack[0][0];
   document.querySelectorAll("#bar button").forEach(b => b.setAttribute("aria-current", b.dataset.tab === root));
-  $("bar").hidden = ["checkout", "edit", "group", "texts", "hero", "section", "homeedit"].includes(v);
+  $("bar").hidden = ["checkout", "edit", "group", "texts", "hero", "section", "homeedit", "avito"].includes(v);
   (VIEWS[v] || VIEWS.home)(arg);
   if (render.restore != null) {
     // возвращаемся туда же; повторяем, пока догружаются картинки и страница не стала нужной высоты
@@ -777,7 +777,7 @@ VIEWS.product = id => {
       ${it.type || groupsOf.length ? `<div><dt>Категория</dt><dd>${esc(it.type || groupsOf[0])}</dd></div>` : ""}
       ${it.section ? `<div><dt>Для кого</dt><dd>${esc(it.section)}</dd></div>` : ""}
       ${(it.facts || []).slice(0, 6).map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}
-      <div><dt>Срок</dt><dd>${inStock(it) ? "В наличии в Москве · 1–2 дня" : "Под заказ 2–3 недели"}</dd></div>
+      <div><dt>Срок</dt><dd>${inStock(it) ? "В наличии · отправка из Королёва за 1–2 дня" : "Под заказ 2–3 недели"}</dd></div>
     </dl>
     <div class="desc">${descHTML(it.description)}</div>
     ${sizes.length ? `<div class="sizes" id="sz">${sizes.map(s => `<button data-s="${esc(s)}" aria-pressed="${s === size}">${esc(s)}</button>`).join("")}</div>` : ""}
@@ -785,6 +785,12 @@ VIEWS.product = id => {
     ${ADMIN ? `<div class="adm"><div class="ttl">Для админов · ${esc(it.id)} · ${STATUS[it.status]}</div>
       <div class="two"><button class="btn sm" id="ed">Редактировать</button><button class="btn sm" id="arch">${it.status === "hidden" ? "Из архива" : "В архив"}</button></div>
       <div class="two" style="margin-top:8px"><button class="btn sm" id="sold">${it.status === "sold" ? "Снова в продаже" : "Продано"}</button><button class="btn sm" id="cp">Текст для Авито</button></div>
+      ${(() => { const av = avOf(it), iss = avIssues(it, av), accs = avAccounts(); return `<span class="lbl">Авито · на какой аккаунт выложить</span>
+      <div class="seg" id="avacc"><button data-acc="" aria-pressed="${!av.acc}">Нет</button>${accs.map((n, i) => `<button data-acc="${i + 1}" aria-pressed="${String(av.acc) === String(i + 1)}">${esc(n)}</button>`).join("")}</div>
+      ${AVITO ? `<div class="two" style="margin-top:8px"><select class="f" id="avcat" aria-label="Категория на Авито"><option value="">Категория?</option>${Object.entries(AVITO.cats).map(([k, v]) => `<option value="${k}" ${k === av.cat ? "selected" : ""}>${esc(v)}</option>`).join("")}</select>
+        <select class="f" id="avcol" aria-label="Цвет на Авито"><option value="">Цвет?</option>${AVITO.colors.map(c => `<option ${c === av.color ? "selected" : ""}>${esc(c)}</option>`).join("")}</select></div>
+        ${av.cat === "w_knit" ? `<select class="f" id="avsub" style="margin-top:8px" aria-label="Вид кофты">${AVITO.knit.map(s => `<option ${s === av.sub ? "selected" : ""}>${esc(s)}</option>`).join("")}</select>` : ""}` : ""}
+      <p class="note ${iss.length ? "bad" : ""}">${iss.length ? "На Авито не попадёт: " + esc(iss.join(", ")) : av.acc ? `В фиде «${esc(accs[av.acc - 1] || "")}» — появится после ближайшей загрузки` : "Категория и цвет подставлены сами — проверьте перед выкладкой"}</p>`; })()}
       <span class="lbl">Группы</span><div class="seg" id="igr">${GROUPS.map(g => `<button data-g="${g.id}" aria-pressed="${g.items.includes(it.id)}">${esc(g.name)}</button>`).join("") || '<span class="note">Групп нет</span>'}</div>
       ${p.qty ? `<span class="lbl">В заказе</span><div>${esc(p.qty)}</div>` : ""}
       ${p.warn ? `<p class="note bad">⚠ ${esc(p.warn)}</p>` : ""}
@@ -845,6 +851,11 @@ VIEWS.product = id => {
       try { await save({...it, status: "active"}); haptic(); toast("Опубликовано — товар виден клиентам"); render.keep = true; render(); } catch(e) { toast(e.message); }
     };
     $("cp").onclick = () => copy(`${it.title}\n\n${it.description}\n\nЦена: ${rub(it.price)}`);
+    const avSave = async patch => { try { await avSet(it, patch); haptic("light"); render.keep = true; render(); } catch(e) { toast(e.message); } };
+    app.querySelectorAll("#avacc button").forEach(b => b.onclick = () => avSave({acc: b.dataset.acc}));
+    if ($("avcat")) $("avcat").onchange = () => avSave({cat: $("avcat").value});
+    if ($("avcol")) $("avcol").onchange = () => avSave({color: $("avcol").value});
+    if ($("avsub")) $("avsub").onchange = () => avSave({sub: $("avsub").value});
     $("arch").onclick = async () => { try { const was = it.status; await save({...it, status: was === "hidden" ? "active" : "hidden"}); haptic(); toast(was === "hidden" ? "Вернул в продажу" : "Убрал в архив"); back(); } catch(e) { toast(e.message); } };
     $("sold").onclick = async () => { try { await save({...it, status: it.status === "sold" ? "active" : "sold"}); haptic(); render.keep = true; render(); } catch(e) { toast(e.message); } };
     app.querySelectorAll("#igr button").forEach(b => b.onclick = async () => {
@@ -896,6 +907,7 @@ function drawMenu(){
       <button class="mi" data-grp="draft">Черновики ${ITEMS.some(i => i.status === "draft") ? `<span class="badge red" style="position:static">${ITEMS.filter(i => i.status === "draft").length}</span>` : ""}</button>
       <button class="mi" data-go="purchase">Закупка у поставщиков ${(SET.purchase && SET.purchase.lines || []).length ? `<span class="badge" style="position:static">${SET.purchase.lines.reduce((a, l) => a + l.qty, 0)}</span>` : ""}</button>
       <button class="mi" data-go="importhelp">Импорт с Pinduoduo и 1688</button>
+      <button class="mi" data-go="avito">Авито: аккаунты и выкладка</button>
       <button class="mi" data-grp="arch">Архив</button>
       <button class="mi" data-go="hero">Главная: блок дропа</button>
       <button class="mi" data-go="texts">Тексты: о нас, контакты, вопросы</button>
@@ -1075,7 +1087,7 @@ VIEWS.edit = id => {
       <div><label class="lbl" for="e_y">Тип</label><input class="f" id="e_y" list="dl_y" placeholder="Куртки" value="${esc(it.type)}"></div></div>
     <datalist id="dl_s">${allSecs.map(s => `<option value="${esc(s)}">`).join("")}</datalist><datalist id="dl_y">${allTypes.map(s => `<option value="${esc(s)}">`).join("")}</datalist>
     <span class="lbl">Группы</span><div class="seg" id="e_g">${GROUPS.map(g => `<button data-g="${g.id}" aria-pressed="${pick.has(g.id)}">${esc(g.name)}</button>`).join("") || '<span class="note">Групп пока нет</span>'}</div>
-    <label class="lbl" for="e_n">В наличии в Москве, шт · 0 — под заказ</label><input class="f tn" id="e_n" type="number" inputmode="numeric" min="0" value="${it.stock || 0}">
+    <label class="lbl" for="e_n">В наличии, шт · 0 — под заказ</label><input class="f tn" id="e_n" type="number" inputmode="numeric" min="0" value="${it.stock || 0}">
     <p class="note">Вещи в наличии клиенты видят первыми в ленте и в рекомендациях, срок у них — «1–2 дня».</p>
     <span class="lbl">Статус</span><div class="seg" id="e_st">${Object.entries(STATUS).map(([k, v]) => `<button data-s="${k}" aria-pressed="${k === it.status}">${v}</button>`).join("")}</div>
     <label class="lbl" for="e_f">Характеристики · строка «Название: значение»</label><textarea class="f" id="e_f" placeholder="Ткань: хлопок 100%">${esc((it.facts || []).map(([k, v]) => k + ": " + v).join("\n"))}</textarea>
@@ -1255,9 +1267,100 @@ async function importSeed(){
   } catch(e) { toast(e.message); b.disabled = false; b.textContent = "Загрузить каталог"; }
 }
 
+// ---------- Авито: товар выкладывается на один из аккаунтов через фид Автозагрузки ----------
+let AVITO = null;  // справочники с сервера (только админам): категории, цвета, виды кофт, список брендов
+const avAccounts = () => (SET.avito && SET.avito.accounts) || ["Аккаунт 1", "Аккаунт 2"];
+const avFeed = n => `${API}?avito=${n}`;
+const AV_COLOR_WORDS = [["чёрн", "Чёрный"], ["черн", "Чёрный"], ["тёмно-син", "Синий"], ["темно-син", "Синий"], ["голуб", "Голубой"], ["син", "Синий"], ["бордо", "Бордовый"], ["винн", "Бордовый"],
+  ["корич", "Коричневый"], ["шоколад", "Коричневый"], ["кофе", "Коричневый"], ["беж", "Бежевый"], ["песоч", "Бежевый"], ["крем", "Бежевый"], ["молоч", "Белый"], ["бел", "Белый"], ["серебр", "Серебряный"],
+  ["графит", "Серый"], ["сер", "Серый"], ["хаки", "Зелёный"], ["олив", "Зелёный"], ["зел", "Зелёный"], ["красн", "Красный"], ["роз", "Розовый"], ["жёлт", "Жёлтый"], ["желт", "Жёлтый"],
+  ["фиолет", "Фиолетовый"], ["лаванд", "Фиолетовый"], ["оранж", "Оранжевый"], ["золот", "Золотой"]];
+function avColor(it){
+  const f = (it.facts || []).find(([k]) => /^цвет/i.test(k));
+  const src = `${f && !/уточн/.test(f[1]) ? f[1] : ""} ${it.title}`.toLowerCase();
+  const hit = AV_COLOR_WORDS.find(([w]) => src.includes(w));
+  return hit ? hit[1] : "";
+}
+function avGuess(it){
+  const t = `${it.type || ""} ${it.title}`.toLowerCase(), m = it.section === "Мужское" || (!/женск/.test(t) && /мужск/.test(t));
+  let cat = "";
+  if (it.type === "Обувь" || /сапог|ботин|ботильон|кроссов|кеды|сникер|дутик|угги/.test(t)) {
+    const k = /ботильон/.test(t) ? "ankle" : /сапог/.test(t) ? "boots" : /кроссов|кеды|сникер/.test(t) ? "sneak" : /дутик|угги|валенк/.test(t) ? "ugg" : "shoes";
+    cat = m ? "ms_" + (k === "sneak" || k === "ugg" ? k : "boots") : "ws_" + k;
+  }
+  else if (/шуб/.test(t)) cat = m ? "m_sheep" : "w_fur";
+  else if (/дублён|дублен|овчин/.test(t)) cat = m ? "m_sheep" : "w_sheep";
+  else if (/парк/.test(t)) cat = m ? "m_parka" : "w_winter";
+  else if (/бомбер/.test(t)) cat = m ? "m_bomber" : "w_demi";
+  else if (/костюм|пиджак|жакет/.test(t)) cat = m ? "" : "w_suit";
+  else if (/кардиган|свитер|джемпер|кофт|водолаз/.test(t)) cat = m ? "" : "w_knit";
+  else if (/джинс/.test(t)) cat = m ? "m_jeans" : "w_jeans";
+  else if (/брюк|леггинс|штан|sweatpants/.test(t)) cat = m ? "m_pants" : "w_pants";
+  else if (/куртк|пуховик|jacket|puffer|аляск/.test(t)) cat = m ? "m_winter" : "w_winter";
+  const sub = /свитер/.test(t) ? "Свитер" : /джемпер/.test(t) ? "Джемпер" : /водолаз/.test(t) ? "Водолазка" : /кофт/.test(t) ? "Кофта" : "Кардиган";
+  return {acc: "", cat, color: avColor(it), sub};
+}
+const avOf = it => { const s = (it.private && it.private.avito) || {}, g = avGuess(it); return {acc: s.acc || "", cat: s.cat || g.cat, color: s.color || g.color, sub: s.sub || g.sub}; };
+const avBrand = it => !!AVITO && new RegExp(AVITO.brands, "i").test(`${it.title} ${it.description || ""}`);
+function avIssues(it, av){
+  const out = [];
+  if (it.status !== "active") out.push(STATUS[it.status].toLowerCase());
+  if (avBrand(it)) out.push("бренд в названии или описании");
+  if (!it.photos.length) out.push("нет фото");
+  if (!av.cat) out.push("не выбрана категория");
+  if (!av.color) out.push("не выбран цвет");
+  if (/^(ws|ms)_/.test(av.cat) && !sizesOf(it).some(z => +z >= 34 && +z <= 48)) out.push("нет размера обуви");
+  return out;
+}
+async function avSet(it, patch){
+  const avito = {...avOf(it), ...patch};
+  return save({...it, private: {...(it.private || {}), avito}});
+}
+VIEWS.avito = () => {
+  const cfg = {address: "Московская область, Королёв", ...(SET.avito || {}), accounts: avAccounts()};
+  const on = n => ITEMS.filter(it => String(avOf(it).acc) === String(n));
+  const bad = ITEMS.filter(it => avOf(it).acc && avIssues(it, avOf(it)).length);
+  const free = ITEMS.filter(it => !avOf(it).acc && !avIssues(it, avOf(it)).length);
+  app.innerHTML = `<button class="back" id="bk">← Назад</button><div class="h1">Авито</div>
+    <div class="desc"><p>Каждый товар выкладывается только на один аккаунт: одинаковые объявления с разных аккаунтов Авито считает дублями и блокирует. Вещи с брендом в названии в фид не попадают — за контрафакт блокируют аккаунт.</p></div>
+    <label class="lbl" for="av_a">Адрес в объявлениях</label><input class="f" id="av_a" value="${esc(cfg.address)}" placeholder="Московская область, Королёв">
+    ${cfg.accounts.map((n, i) => { const all = on(i + 1), ok = all.filter(it => !avIssues(it, avOf(it)).length).length; return `<div class="realbox" style="margin-top:12px">
+      <div class="ttl">Аккаунт ${i + 1}</div><input class="f" data-an="${i}" value="${esc(n)}" maxlength="30" aria-label="Название аккаунта ${i + 1}">
+      <div class="rr"><span>В фиде</span><b class="tn">${ok} ${plural(ok, "объявление", "объявления", "объявлений")}${all.length > ok ? ` · ${all.length - ok} с ошибками` : ""}</b></div>
+      <div class="lnk"><span class="note">Ссылка для Автозагрузки</span><code>${esc(avFeed(i + 1))}</code><button class="btn sm" data-copy="${esc(avFeed(i + 1))}">Копировать</button></div></div>`; }).join("")}
+    <div class="stack" style="margin-top:12px"><button class="btn w" id="av_save">Сохранить адрес и названия</button>
+      ${free.length ? `<button class="btn" id="av_dist">Распределить ${free.length} ${plural(free.length, "товар", "товара", "товаров")} поровну</button>` : ""}</div>
+    ${bad.length ? `<span class="lbl">Не попадут на Авито — откройте и исправьте</span>${bad.map(it => `<button class="secrow" data-open="${esc(it.id)}"><span>${esc(it.title)}</span><small class="mut">${esc(avIssues(it, avOf(it)).join(", "))}</small></button>`).join("")}` : ""}
+    <span class="lbl">Как подключить</span><div class="desc"><ol>
+      <li>На каждом аккаунте подключите тариф с Автозагрузкой: Авито → «Для профессионалов» → «Тарифы».</li>
+      <li>Авито → «Автозагрузка» → «Настройки»: вставьте ссылку этого аккаунта, расписание — несколько раз в день.</li>
+      <li>Запустите загрузку вручную и посмотрите отчёт: там будут ошибки, если Авито что-то не принял.</li>
+      <li>Дальше всё само: выбрали аккаунт в карточке товара — объявление появится после ближайшей загрузки; продано, в архиве или «Нет» — закроется.</li></ol></div>`;
+  $("bk").onclick = back;
+  app.querySelectorAll("[data-copy]").forEach(b => b.onclick = () => copy(b.dataset.copy));
+  app.querySelectorAll("[data-open]").forEach(b => b.onclick = () => go("product", b.dataset.open));
+  $("av_save").onclick = async () => {
+    const value = {...(SET.avito || {}), address: $("av_a").value.trim() || "Московская область, Королёв", accounts: [...app.querySelectorAll("[data-an]")].map((x, i) => x.value.trim() || `Аккаунт ${i + 1}`)};
+    try { await call("settings_save", {key: "avito", value}); SET.avito = value; haptic(); toast("Сохранено"); render.keep = true; render(); } catch(e) { toast(e.message); }
+  };
+  if ($("av_dist")) $("av_dist").onclick = async () => {
+    const b = $("av_dist"); b.disabled = true;
+    const count = cfg.accounts.map((_, i) => on(i + 1).length);
+    try {
+      for (const [k, it] of free.entries()) {
+        const n = count.indexOf(Math.min(...count)); count[n]++;
+        b.textContent = `Распределяю ${k + 1} из ${free.length}…`;
+        await avSet(it, {acc: String(n + 1)});
+      }
+      haptic(); toast("Готово — появятся на Авито после ближайшей загрузки");
+    } catch(e) { toast(e.message); }
+    render.keep = true; render();
+  };
+};
+
 // ---------- запуск ----------
 async function loadAll(){
-  const r = await call("items"); ITEMS = r.items || []; GROUPS = r.groups || []; SET = r.settings || {};
+  const r = await call("items"); ITEMS = r.items || []; GROUPS = r.groups || []; SET = r.settings || {}; AVITO = r.avito || null;
 }
 if (tg) {
   tg.ready(); tg.expand();
