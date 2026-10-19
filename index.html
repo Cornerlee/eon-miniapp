@@ -300,6 +300,7 @@ const app = document.getElementById("app");
 const $ = id => document.getElementById(id);
 let ITEMS = [], GROUPS = [], SET = {}, ORDERS = [], ADMIN = false, USER = null;
 let CART = [], LIKES = [], SEEN = [], CONTACT = {}, RECENT = [];
+let SRC = null;  // из какой рекламы пришёл клиент: {code, at} — хвост «__код» в ссылке startapp, живёт 30 дней
 let stack = [], drawer = null;
 
 // ---------- утилиты ----------
@@ -379,7 +380,7 @@ function render(){
   if (tg) stack.length > 1 ? tg.BackButton.show() : tg.BackButton.hide();
   const root = stack[0][0];
   document.querySelectorAll("#bar button").forEach(b => b.setAttribute("aria-current", b.dataset.tab === root));
-  $("bar").hidden = ["checkout", "edit", "group", "texts", "hero", "section", "homeedit", "avito"].includes(v);
+  $("bar").hidden = ["checkout", "edit", "group", "texts", "hero", "section", "homeedit", "avito", "ads"].includes(v);
   (VIEWS[v] || VIEWS.home)(arg);
   if (render.restore != null) {
     // возвращаемся туда же; повторяем, пока догружаются картинки и страница не стала нужной высоты
@@ -920,6 +921,7 @@ function drawMenu(){
       <button class="mi" data-go="purchase">Закупка у поставщиков ${(SET.purchase && SET.purchase.lines || []).length ? `<span class="badge" style="position:static">${SET.purchase.lines.reduce((a, l) => a + l.qty, 0)}</span>` : ""}</button>
       <button class="mi" data-go="importhelp">Импорт с Pinduoduo и 1688</button>
       <button class="mi" data-go="avito">Авито: аккаунты и выкладка</button>
+      <button class="mi" data-go="ads">Реклама: ссылки и источники заказов</button>
       <button class="mi" data-grp="arch">Архив</button>
       <button class="mi" data-go="hero">Главная: блок дропа</button>
       <button class="mi" data-go="texts">Тексты: о нас, контакты, вопросы</button>
@@ -955,19 +957,20 @@ VIEWS.checkout = () => {
     <label class="lbl" for="c_m">Комментарий</label><textarea class="f" id="c_m" placeholder="Необязательно"></textarea>
     <div style="height:16px"></div>
     <button class="btn w" id="send">Отправить заявку</button>
-    <p class="note up" style="text-align:center;font-size:10px;margin-top:12px">Детали и доставку подтвердит продавец в чате · отправка из Москвы</p>`;
+    <p class="note up" style="text-align:center;font-size:10px;margin-top:12px">Детали и доставку подтвердит продавец в чате · отправка из Королёва (Подмосковье)</p>`;
   $("bk").onclick = back;
   let delivery = ct.delivery;
   app.querySelectorAll("#c_d button").forEach(b => b.onclick = () => { delivery = b.dataset.d; app.querySelectorAll("#c_d button").forEach(x => x.setAttribute("aria-pressed", x === b)); });
   const send = async () => {
-    const contact = {name: $("c_n").value.trim(), phone: $("c_p").value.trim(), city: $("c_c").value.trim(), delivery, pickup: $("c_a").value.trim()};
+    const contact = {name: $("c_n").value.trim(), phone: $("c_p").value.trim(), city: $("c_c").value.trim(), delivery, pickup: $("c_a").value.trim(),
+      source: SRC && Date.now() - SRC.at < 30 * 864e5 ? SRC.code : ""};
     if (!contact.name) { toast("Укажите ФИО"); $("c_n").focus(); return; }
     if (contact.phone.replace(/\D/g, "").length < 10) { toast("Укажите телефон"); $("c_p").focus(); return; }
     if (!contact.city && !delivery.startsWith("Самовывоз")) { toast("Укажите город"); $("c_c").focus(); return; }
     $("send").disabled = true; if (tg) tg.MainButton.showProgress();
     try {
       const r = await call("order", {cart: CART, contact, comment: $("c_m").value.trim()});
-      CONTACT = contact; store.set("eon_contact", contact);
+      const {source: _, ...keep} = contact; CONTACT = keep; store.set("eon_contact", keep);
       CART = []; saveCart(); haptic();
       stack = [["home"], ["done", r.id]]; render();
     } catch(e) { toast(e.message); haptic("error"); $("send").disabled = false; }
@@ -1042,7 +1045,7 @@ function orderCard(o, admin){
   return `<div class="ord"><div class="hd"><span>№${o.id} · ${d}</span><span class="st ${o.status}">${OST[o.status] || esc(o.status)}</span></div>
     ${orderLines(o)}
     ${o.total ? `<div class="tot" style="margin-top:10px"><span>Итого</span><b class="tn">${rub(o.total)}</b></div>` : ""}
-    ${admin ? `<div class="ct">${esc([c.name || o.user_name, c.phone, [c.city, c.delivery].filter(Boolean).join(" · "), c.pickup, o.comment ? "«" + o.comment + "»" : ""].filter(Boolean).join("\n"))}\nTelegram: ${esc(o.user_name)}</div>
+    ${admin ? `<div class="ct">${esc([c.name || o.user_name, c.phone, [c.city, c.delivery].filter(Boolean).join(" · "), c.pickup, o.comment ? "«" + o.comment + "»" : ""].filter(Boolean).join("\n"))}\nTelegram: ${esc(o.user_name)}${c.source ? `\nИсточник: ${esc(adName(c.source))}` : ""}</div>
       <div class="row">${Object.entries(OST).map(([k, v]) => `<button class="chip" data-os="${k}" data-oid="${o.id}" aria-pressed="${o.status === k}">${v}</button>`).join("")}</div>
       <div class="row">${o.username ? `<button class="btn sm" data-u="${esc(o.username)}">Написать @${esc(o.username)}</button>` : ""}${c.phone ? `<button class="btn sm" data-cp="${esc(c.phone)}">Скопировать телефон</button>` : ""}</div>` : ""}
   </div>`;
@@ -1386,6 +1389,50 @@ VIEWS.avito = (f = "all") => {
   };
 };
 
+// ---------- реклама: ссылки с меткой источника и сводка заказов по источникам ----------
+const adSources = () => (SET.ads && SET.ads.sources) || [];
+const adName = code => { const s = adSources().find(x => x.code === code); return s ? `${s.name} (${code})` : code; };
+const adLink = (code, itemId) => `https://t.me/${BOT}?startapp=${itemId ? "p_" + itemId : "src"}__${code}`;
+VIEWS.ads = async (pick = "") => {
+  const st = stack[stack.length - 1];
+  app.innerHTML = `<button class="back" id="bk">← Назад</button><div class="h1">Реклама</div><div class="spin">Загрузка</div>`;
+  $("bk").onclick = back;
+  await loadOrders();
+  if (stack[stack.length - 1] !== st) return;
+  const srcs = adSources(), items = newest(visible());
+  const stat = {};
+  ORDERS.filter(o => o.status !== "cancel").forEach(o => { const k = (o.contact && o.contact.source) || ""; (stat[k] ??= {n: 0, sum: 0}); stat[k].n++; stat[k].sum += o.total || 0; });
+  const codes = [...new Set([...srcs.map(s => s.code), ...Object.keys(stat).filter(Boolean)])];
+  app.querySelector(".spin").outerHTML = `
+    <div class="desc"><p>Для каждого канала или блогера заведите свой код и давайте ему его ссылку. Клиент, пришедший по ссылке, в течение 30 дней числится за этим источником — видно в заказе и в таблице ниже.</p></div>
+    <span class="lbl">Новый источник</span>
+    <div class="two"><input class="f" id="ad_n" placeholder="Канал «Бездонные траты»" maxlength="40"><input class="f" id="ad_c" placeholder="код: btrati" maxlength="30" autocapitalize="off"></div>
+    <button class="btn w" id="ad_add" style="width:100%;margin-top:8px">Добавить источник</button>
+    <label class="lbl" for="ad_i">Ссылки ведут на</label>
+    <select class="f" id="ad_i"><option value="">Каталог целиком</option>${items.map(it => `<option value="${esc(it.id)}" ${it.id === pick ? "selected" : ""}>${esc(it.id)} · ${esc(it.title)}</option>`).join("")}</select>
+    <span class="lbl">Источники и заказы</span>
+    ${codes.length ? codes.map(code => { const s = srcs.find(x => x.code === code), r = stat[code] || {n: 0, sum: 0}, link = adLink(code, pick); return `<div class="realbox" style="margin-top:10px">
+      <div class="ttl">${esc(s ? s.name : "без названия")} · ${esc(code)}</div>
+      <div class="rr"><span>Заказы</span><b class="tn">${r.n} · ${rub(r.sum)}</b></div>
+      <div class="lnk"><code>${esc(link)}</code><button class="btn sm" data-copy="${esc(link)}">Копировать</button></div>
+      ${s ? `<button class="btn sm del" data-adrm="${esc(code)}" style="margin-top:6px">Убрать источник</button>` : ""}</div>`; }).join("") : '<p class="note">Источников пока нет — добавьте первый выше.</p>'}
+    ${stat[""] ? `<p class="note" style="margin-top:12px">Без источника: ${stat[""].n} ${plural(stat[""].n, "заказ", "заказа", "заказов")} · ${rub(stat[""].sum)}</p>` : ""}`;
+  const saveSrcs = async list => { try { await call("settings_save", {key: "ads", value: {...(SET.ads || {}), sources: list}}); SET.ads = {...(SET.ads || {}), sources: list}; haptic(); render.keep = true; render(); } catch(e) { toast(e.message); } };
+  $("ad_add").onclick = () => {
+    const name = $("ad_n").value.trim(), code = $("ad_c").value.trim().toLowerCase();
+    if (!name) return toast("Введите название");
+    if (!/^[a-z0-9-]{1,30}$/.test(code)) return toast("Код — латиница, цифры и дефис, без пробелов");
+    if (srcs.some(x => x.code === code)) return toast("Такой код уже есть");
+    saveSrcs([...srcs, {name, code}]);
+  };
+  $("ad_i").onchange = () => { st[1] = $("ad_i").value; render.keep = true; render(); };
+  app.querySelectorAll("[data-copy]").forEach(b => b.onclick = () => copy(b.dataset.copy));
+  app.querySelectorAll("[data-adrm]").forEach(b => { let armed = false; b.onclick = () => {
+    if (!armed) { armed = true; b.textContent = "Точно убрать?"; setTimeout(() => { armed = false; b.textContent = "Убрать источник"; }, 3000); return; }
+    saveSrcs(srcs.filter(x => x.code !== b.dataset.adrm));
+  }; });
+};
+
 // ---------- запуск ----------
 async function loadAll(){
   const r = await call("items"); ITEMS = r.items || []; GROUPS = r.groups || []; SET = r.settings || {}; AVITO = r.avito || null;
@@ -1397,7 +1444,7 @@ if (tg) {
   tg.BackButton.onClick(back);
 }
 (async () => {
-  [CART, LIKES, CONTACT, RECENT] = await Promise.all([store.get("eon_cart"), store.get("eon_likes"), store.get("eon_contact"), store.get("eon_recent")]);
+  [CART, LIKES, CONTACT, RECENT, SRC] = await Promise.all([store.get("eon_cart"), store.get("eon_likes"), store.get("eon_contact"), store.get("eon_recent"), store.get("eon_src")]);
   RECENT = Array.isArray(RECENT) ? RECENT : [];
   CART = Array.isArray(CART) ? CART : []; LIKES = Array.isArray(LIKES) ? LIKES : []; CONTACT = CONTACT || {};
   try {
@@ -1411,7 +1458,9 @@ if (tg) {
   badges(); loadOrders();
   stack = [["home"]];
   const sp = (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) || new URLSearchParams(location.search).get("tgWebAppStartParam") || "";
-  const m = sp.match(/^([po])_(.+)$/);
+  const [target, srcCode] = sp.split("__");
+  if (srcCode && /^[A-Za-z0-9-]{1,30}$/.test(srcCode)) { SRC = {code: srcCode.toLowerCase(), at: Date.now()}; store.set("eon_src", SRC); }
+  const m = target.match(/^([po])_(.+)$/);
   if (m && byId(m[2])) { if (m[1] === "o") BUY = m[2]; stack.push(["product", m[2]]); }
   render();
 })();
