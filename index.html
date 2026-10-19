@@ -1269,7 +1269,7 @@ async function importSeed(){
 
 // ---------- Авито: товар выкладывается на один из аккаунтов через фид Автозагрузки ----------
 let AVITO = null;  // справочники с сервера (только админам): категории, цвета, виды кофт, список брендов
-const avAccounts = () => (SET.avito && SET.avito.accounts) || ["Аккаунт 1", "Аккаунт 2"];
+const avAccounts = () => (SET.avito && SET.avito.accounts) || ["Аккаунт 1"];
 const avFeed = n => `${API}?avito=${n}`;
 const AV_COLOR_WORDS = [["чёрн", "Чёрный"], ["черн", "Чёрный"], ["тёмно-син", "Синий"], ["темно-син", "Синий"], ["голуб", "Голубой"], ["син", "Синий"], ["бордо", "Бордовый"], ["винн", "Бордовый"],
   ["корич", "Коричневый"], ["шоколад", "Коричневый"], ["кофе", "Коричневый"], ["беж", "Бежевый"], ["песоч", "Бежевый"], ["крем", "Бежевый"], ["молоч", "Белый"], ["бел", "Белый"], ["серебр", "Серебряный"],
@@ -1322,18 +1322,18 @@ VIEWS.avito = () => {
   const bad = ITEMS.filter(it => avOf(it).acc && avIssues(it, avOf(it)).length);
   const free = ITEMS.filter(it => !avOf(it).acc && !avIssues(it, avOf(it)).length);
   app.innerHTML = `<button class="back" id="bk">← Назад</button><div class="h1">Авито</div>
-    <div class="desc"><p>Каждый товар выкладывается только на один аккаунт: одинаковые объявления с разных аккаунтов Авито считает дублями и блокирует. Вещи с брендом в названии в фид не попадают — за контрафакт блокируют аккаунт.</p></div>
+    <div class="desc"><p>Вещи с брендом в названии в фид не попадают — за контрафакт блокируют аккаунт.</p></div>
     <label class="lbl" for="av_a">Адрес в объявлениях</label><input class="f" id="av_a" value="${esc(cfg.address)}" placeholder="Московская область, Королёв">
     ${cfg.accounts.map((n, i) => { const all = on(i + 1), ok = all.filter(it => !avIssues(it, avOf(it)).length).length; return `<div class="realbox" style="margin-top:12px">
       <div class="ttl">Аккаунт ${i + 1}</div><input class="f" data-an="${i}" value="${esc(n)}" maxlength="30" aria-label="Название аккаунта ${i + 1}">
       <div class="rr"><span>В фиде</span><b class="tn">${ok} ${plural(ok, "объявление", "объявления", "объявлений")}${all.length > ok ? ` · ${all.length - ok} с ошибками` : ""}</b></div>
       <div class="lnk"><span class="note">Ссылка для Автозагрузки</span><code>${esc(avFeed(i + 1))}</code><button class="btn sm" data-copy="${esc(avFeed(i + 1))}">Копировать</button></div></div>`; }).join("")}
     <div class="stack" style="margin-top:12px"><button class="btn w" id="av_save">Сохранить адрес и названия</button>
-      ${free.length ? `<button class="btn" id="av_dist">Распределить ${free.length} ${plural(free.length, "товар", "товара", "товаров")} поровну</button>` : ""}</div>
+      ${free.length ? `<button class="btn" id="av_dist">${cfg.accounts.length > 1 ? "Распределить" : "Выложить на Авито"} ${free.length} ${plural(free.length, "товар", "товара", "товаров")}${cfg.accounts.length > 1 ? " поровну" : ""}</button>` : ""}</div>
     ${bad.length ? `<span class="lbl">Не попадут на Авито — откройте и исправьте</span>${bad.map(it => `<button class="secrow" data-open="${esc(it.id)}"><span>${esc(it.title)}</span><small class="mut">${esc(avIssues(it, avOf(it)).join(", "))}</small></button>`).join("")}` : ""}
     <span class="lbl">Как подключить</span><div class="desc"><ol>
-      <li>На каждом аккаунте подключите тариф с Автозагрузкой: Авито → «Для профессионалов» → «Тарифы».</li>
-      <li>Авито → «Автозагрузка» → «Настройки»: вставьте ссылку этого аккаунта, расписание — несколько раз в день.</li>
+      <li>Подключите на аккаунте тариф с Автозагрузкой: Авито → «Для профессионалов» → «Тарифы».</li>
+      <li>Авито → «Автозагрузка» → «Настройки»: вставьте ссылку аккаунта, расписание — несколько раз в день.</li>
       <li>Запустите загрузку вручную и посмотрите отчёт: там будут ошибки, если Авито что-то не принял.</li>
       <li>Дальше всё само: выбрали аккаунт в карточке товара — объявление появится после ближайшей загрузки; продано, в архиве или «Нет» — закроется.</li></ol></div>`;
   $("bk").onclick = back;
