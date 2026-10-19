@@ -141,6 +141,7 @@ textarea.f.big{min-height:220px}
 .heart[aria-pressed="true"] svg{fill:#fff}
 .tag{position:absolute;left:6px;top:6px;background:var(--inv);color:var(--inv-fg);font-size:9.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;padding:3px 6px;z-index:2}
 .tag.dark{background:rgba(0,0,0,.65);color:#fff}
+.tag.stock{top:auto;bottom:6px;background:#2f7d55;color:#fff}
 
 /* карточка товара */
 .gal{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;background:#fff}
@@ -315,6 +316,8 @@ function colorRank(it){
 const byColor = list => [...list].sort((a, b) => colorRank(a) - colorRank(b) || (a.sort || 0) - (b.sort || 0));
 const visible = () => byColor(ITEMS.filter(it => it.status !== "hidden" && it.status !== "draft"));
 const byId = id => ITEMS.find(x => x.id === id);
+const inStock = it => it.status === "active" && (it.stock || 0) > 0;
+const stockFirst = list => [...list.filter(inStock), ...list.filter(it => !inStock(it))];
 const sizesOf = it => (it.sizes || "").split(/[\s,\/]+/).filter(s => /^(X{0,3}S|M|X{0,3}L|\d{2,3})$/i.test(s));
 
 async function call(action, data){
@@ -389,7 +392,8 @@ function card(it){
   const liked = LIKES.includes(it.id), sale = it.old_price > it.price;
   return `<div class="pc">
     <button class="ph" data-open="${esc(it.id)}">${it.photos[0] ? `<img src="${esc(it.photos[0])}" alt="" loading="lazy">` : ""}
-      ${it.status === "sold" ? '<span class="tag dark">Продано</span>' : it.status === "hidden" ? '<span class="tag dark">Архив</span>' : it.status === "draft" ? '<span class="tag dark">Черновик</span>' : sale ? `<span class="tag">−${Math.round((1 - it.price / it.old_price) * 100)}%</span>` : ""}</button>
+      ${it.status === "sold" ? '<span class="tag dark">Продано</span>' : it.status === "hidden" ? '<span class="tag dark">Архив</span>' : it.status === "draft" ? '<span class="tag dark">Черновик</span>' : sale ? `<span class="tag">−${Math.round((1 - it.price / it.old_price) * 100)}%</span>` : ""}
+      ${ADMIN && it.stock > 0 ? `<span class="tag stock">В наличии · ${it.stock}</span>` : ""}</button>
     <button class="heart" data-like="${esc(it.id)}" aria-pressed="${liked}" aria-label="В лайки">${HEART}</button>
     <button class="cap" data-open="${esc(it.id)}"><div class="nm">${esc(it.title)}</div><div class="pr tn">${rub(it.price)}${sale ? `<s>${rub(it.old_price)}</s>` : ""}</div>${ADMIN && it.private && it.private.cost ? `<div class="real tn">закупка ${rub(it.private.cost)}</div>` : ""}</button>
   </div>`;
@@ -535,8 +539,9 @@ VIEWS.section = idx => {
   };
   draw();
 };
-// лента «Для вас»: похожее на то, что клиент смотрел, лайкал и положил в корзину
-function forYou(list){
+// лента «Для вас»: сначала вещи в наличии, внутри — похожее на то, что клиент смотрел, лайкал и положил в корзину
+const forYou = list => stockFirst(bySignals(list));
+function bySignals(list){
   const signals = [...CART.map(c => [c.id, 3]), ...LIKES.map(id => [id, 2]), ...RECENT.slice(0, 15).map((id, i) => [id, 1.5 - i * 0.08])];
   const src = signals.map(([id, w]) => [byId(id), w]).filter(([x]) => x);
   if (!src.length) return newest(list);
@@ -572,6 +577,7 @@ function applyFilters(list, o){
   if (o.q) { const q = o.q.toLowerCase(); list = list.filter(it => (it.title + " " + it.type + " " + it.section + " " + it.id + " " + (it.facts || []).map(f => f[1]).join(" ")).toLowerCase().includes(q)); }
   if (o.size) list = list.filter(it => sizesOf(it).map(z => z.toUpperCase()).includes(o.size));
   if (o.sale) list = list.filter(it => it.old_price > it.price);
+  if (o.stock) list = list.filter(inStock);
   if (o.sort === "asc") return [...list].sort((a, b) => a.price - b.price);
   if (o.sort === "desc") return [...list].sort((a, b) => b.price - a.price);
   if (o.sort === "new") return newest(list);
@@ -628,7 +634,7 @@ function drawFeed(o){
         ${((SET.feed && SET.feed.hiddenTypes) || []).length ? `<p class="note" style="padding-bottom:10px">Скрыто: ${SET.feed.hiddenTypes.map(t => `<button class="chip" data-unhide="${esc(t)}" style="margin:4px 4px 0 0">${esc(t)} ↺</button>`).join("")}</p>` : ""}
         <p class="note" style="padding-bottom:12px">Группа — подборка, вещи в неё вы добавляете сами. Тип — берётся из карточек товаров («Куртки», «Брюки»…): переименование меняет тип у всех вещей сразу.</p>` : ""}
     </div>` : ""}
-    <div class="chips" style="margin-top:10px">${Object.entries(SORTS).map(([k, v]) => chip("sort", k, v)).join("")}<button class="chip" data-fsale aria-pressed="${o.sale}">% Sale</button></div>
+    <div class="chips" style="margin-top:10px">${Object.entries(SORTS).map(([k, v]) => chip("sort", k, v)).join("")}<button class="chip" data-fsale aria-pressed="${o.sale}">% Sale</button>${ADMIN ? `<button class="chip" data-fstock aria-pressed="${!!o.stock}">В наличии · ${base.filter(inStock).length}</button>` : ""}</div>
     ${sizes.length ? `<div class="chips" style="margin-top:8px">${chip("size", "", "Любой размер")}${sizes.map(z => chip("size", z, z)).join("")}</div>` : ""}
     <div class="feedlay">${Object.entries(FEED_LAYOUTS).map(([k, v]) => `<button data-fl="${k}" aria-pressed="${o.lay === k}" aria-label="${k} в ряд">${v}</button>`).join("")}</div>
     ${list.length ? grid(list, o.lay) : `<div class="empty">Ничего не нашлось — сбросьте поиск или раздел</div>`}`;
@@ -665,6 +671,7 @@ function drawFeed(o){
   fb.querySelectorAll("[data-sec]").forEach(b => b.onclick = () => { haptic("light"); o.sec = b.dataset.sec; o.panel = false; $("fsecbtn").setAttribute("aria-pressed", false); drawFeed(o); $("feed").scrollIntoView({behavior: "smooth"}); });
   fb.querySelectorAll("[data-fk]").forEach(b => b.onclick = () => { haptic("light"); o[b.dataset.fk] = b.dataset.fv; drawFeed(o); });
   fb.querySelectorAll("[data-fsale]").forEach(b => b.onclick = () => { o.sale = !o.sale; drawFeed(o); });
+  fb.querySelectorAll("[data-fstock]").forEach(b => b.onclick = () => { o.stock = !o.stock; drawFeed(o); });
   fb.querySelectorAll("[data-fl]").forEach(b => b.onclick = () => { o.lay = b.dataset.fl; drawFeed(o); });
   bindCards();
 }
@@ -726,6 +733,7 @@ function recommend(it, n = 8){
     if (GROUPS.some(g => groupsOf.has(g.id) && g.items.includes(x.id))) sc += 2;
     if (it.price && Math.abs(x.price - it.price) / it.price < 0.3) sc += 1;
     if (LIKES.includes(x.id)) sc += 1;
+    if (inStock(x)) sc += 3;
     // небольшая «перетасовка», стабильная для пары товаров, чтобы подборки не выглядели одинаково
     const h = [...(it.id + x.id)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 997, 7) / 997;
     return [sc + h, x];
@@ -759,6 +767,7 @@ VIEWS.product = id => {
     <div class="ptitle"><h1>${esc(it.title)}</h1><button class="heart" id="lk" aria-pressed="${LIKES.includes(it.id)}" aria-label="В лайки">${HEART}</button></div>
     <div class="pprice tn">${rub(it.price)}${sale ? `<s>${rub(it.old_price)}</s>` : ""}</div>
     ${ADMIN ? `<div class="realbox"><div class="ttl">Видят только админы</div>
+      <div class="rr"><span>В наличии</span><b class="tn ${it.stock > 0 ? "good" : ""}">${it.stock > 0 ? it.stock + " шт" : "нет, под заказ"}</b></div>
       <div class="rr"><span>Реальная цена</span><b class="tn">${p.cny ? `¥${esc(p.cny)} ≈ ${rub(Math.round(p.cny * 12))}` : "не указана"}</b></div>
       <div class="rr"><span>Под ключ с карго</span><b class="tn">${cost ? rub(cost) : "—"}</b></div>
       <div class="rr"><span>Наценка</span><b class="tn ${mult >= 1.7 ? "good" : "bad"}">${cost ? `${profit > 0 ? "+" : ""}${rub(profit)} · ×${mult}` : "—"}</b></div>
@@ -768,7 +777,7 @@ VIEWS.product = id => {
       ${it.type || groupsOf.length ? `<div><dt>Категория</dt><dd>${esc(it.type || groupsOf[0])}</dd></div>` : ""}
       ${it.section ? `<div><dt>Для кого</dt><dd>${esc(it.section)}</dd></div>` : ""}
       ${(it.facts || []).slice(0, 6).map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}
-      <div><dt>Срок</dt><dd>Под заказ 2–3 недели</dd></div>
+      <div><dt>Срок</dt><dd>${inStock(it) ? "В наличии в Москве · 1–2 дня" : "Под заказ 2–3 недели"}</dd></div>
     </dl>
     <div class="desc">${descHTML(it.description)}</div>
     ${sizes.length ? `<div class="sizes" id="sz">${sizes.map(s => `<button data-s="${esc(s)}" aria-pressed="${s === size}">${esc(s)}</button>`).join("")}</div>` : ""}
@@ -1066,6 +1075,8 @@ VIEWS.edit = id => {
       <div><label class="lbl" for="e_y">Тип</label><input class="f" id="e_y" list="dl_y" placeholder="Куртки" value="${esc(it.type)}"></div></div>
     <datalist id="dl_s">${allSecs.map(s => `<option value="${esc(s)}">`).join("")}</datalist><datalist id="dl_y">${allTypes.map(s => `<option value="${esc(s)}">`).join("")}</datalist>
     <span class="lbl">Группы</span><div class="seg" id="e_g">${GROUPS.map(g => `<button data-g="${g.id}" aria-pressed="${pick.has(g.id)}">${esc(g.name)}</button>`).join("") || '<span class="note">Групп пока нет</span>'}</div>
+    <label class="lbl" for="e_n">В наличии в Москве, шт · 0 — под заказ</label><input class="f tn" id="e_n" type="number" inputmode="numeric" min="0" value="${it.stock || 0}">
+    <p class="note">Вещи в наличии клиенты видят первыми в ленте и в рекомендациях, срок у них — «1–2 дня».</p>
     <span class="lbl">Статус</span><div class="seg" id="e_st">${Object.entries(STATUS).map(([k, v]) => `<button data-s="${k}" aria-pressed="${k === it.status}">${v}</button>`).join("")}</div>
     <label class="lbl" for="e_f">Характеристики · строка «Название: значение»</label><textarea class="f" id="e_f" placeholder="Ткань: хлопок 100%">${esc((it.facts || []).map(([k, v]) => k + ": " + v).join("\n"))}</textarea>
     <label class="lbl" for="e_d">Описание · строки с «•» станут списком</label><textarea class="f big" id="e_d">${esc(it.description)}</textarea>
@@ -1104,7 +1115,7 @@ VIEWS.edit = id => {
     if (!(price > 0)) return toast("Укажите цену");
     if (!it.photos.length) return toast("Добавьте хотя бы одно фото");
     const cny = parseFloat($("e_c").value) || 0, kg = parseFloat($("e_k").value) || 0;
-    Object.assign(it, {title, price, old_price: parseInt($("e_o").value, 10) || 0, sizes: $("e_z").value.trim(), section: $("e_s").value.trim(), type: $("e_y").value.trim(), description: $("e_d").value,
+    Object.assign(it, {title, price, old_price: parseInt($("e_o").value, 10) || 0, stock: Math.max(0, parseInt($("e_n").value, 10) || 0), sizes: $("e_z").value.trim(), section: $("e_s").value.trim(), type: $("e_y").value.trim(), description: $("e_d").value,
       facts: $("e_f").value.split("\n").map(l => l.split(/:(.*)/s).map(s => s.trim())).filter(([k, v]) => k && v).map(([k, v]) => [k, v])});
     Object.assign(it.private, {links: $("e_l").value.split("\n").map(l => l.split("|").map(s => s.trim())).filter(([n, u]) => n && u).map(([n, u]) => [n, u]),
       qty: $("e_q").value.trim(), cny, kg, cost: cny ? Math.round((cny * 12 + kg * 480) / 10) * 10 : 0, warn: $("e_w").value.trim()});
